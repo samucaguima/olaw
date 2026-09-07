@@ -44,3 +44,16 @@ def get_root():
         render_template("index.html", app_consts=json.dumps(app_consts)),
         200,
     )
+
+
+@current_app.route("/particles")
+def get_particles():
+    """
+    [GET] /particles
+    Renders the interactive particle field sandbox.
+    Standalone page: does not depend on the LLM / search settings the main UI needs.
+    """
+    return (
+        render_template("particles.html"),
+        200,
+    )

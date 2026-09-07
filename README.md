@@ -19,6 +19,7 @@ https://github.com/harvard-lil/olaw/assets/625889/65dd61db-42f8-490b-a737-0612d9
 - [Starting the server](#starting-the-server)
 - [Recommended models](#recommended-models)
 - [Interacting with the Web UI](#interacting-with-the-web-ui)
+- [Particle field](#particle-field)
 - [Interacting with the API](#interacting-with-the-api)
 - [Adding new tools](#adding-new-tools)
 - [Getting Involved](#getting-involved)
@@ -136,6 +137,39 @@ We have observed performance with `openai/gpt-4-turbo-preview` during out initia
 Once the server is started, the application's web UI should be available at `http://localhost:5000`.
 
 The interface automatically handles a basic chat history, allowing for few-shots / chain-of-thoughts prompting. 
+
+[☝️ Summary](#summary)
+
+---
+
+## Particle field
+
+`http://localhost:5000/particles` serves an interactive particle field: a few thousand particles
+orbit towards the pointer, leaving color-shifting trails behind them.
+
+It is a standalone page (`<particle-field>`, see [`ParticleField.js`](/olaw/static/components/ParticleField.js)):
+it needs no model, no API key and none of the settings the chatbot relies on.
+
+**Pointer**
+- Moving the pointer bends the field towards it, and fast moves push a wake along the way.
+- Pressing detonates a shockwave and pulls harder for as long as the pointer is held.
+- Leaving the surface hands the field over to a slow virtual attractor, so it keeps moving.
+
+**Controls**
+- Particle count (100 to 5,000), attraction force, swirl, trail persistence and color shift.
+- Color mode: hue driven by speed, direction, distance to the pointer, or orbit.
+- Background: six presets - including the `Paper` tone used by the rest of the app - plus a
+  custom color picker. Dark grounds blend particles additively, light ones do not.
+- `Clear` wipes the trails, `Reset` restores the defaults, `Pause` freezes the simulation and
+  `Save PNG` downloads the canvas as it stands.
+
+**Keyboard**: <kbd>C</kbd>lear, <kbd>R</kbd>eset, <kbd>S</kbd>ave, <kbd>P</kbd>ause,
+<kbd>H</kbd>ide the panel. Arrow keys and <kbd>WASD</kbd> steer the field without a pointing
+device.
+
+The readout under the buttons reports the frame rate. Rendering the glow pass is what costs
+the most, so it is dropped automatically if the frame rate cannot keep up, and restored when
+the load is lowered. `prefers-reduced-motion: reduce` starts the field with calmer defaults.
 
 [☝️ Summary](#summary)
 

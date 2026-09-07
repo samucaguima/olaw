@@ -1,0 +1,57 @@
+/**
+ * Page-level styles for the particle field sandbox (`/particles`).
+ * Everything else lives in `/static/components/ParticleField.css`.
+ */
+* {
+  padding: 0px;
+  margin: 0px;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+html {
+  color: #f4f4f6;
+  font-size: 16px;
+  font-family: "Helvetica Neue", Helvetica, Arial, Sans-serif;
+  background-color: #070811;
+}
+
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+particle-field {
+  height: 100%;
+}
+
+.back-link {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.35rem;
+  background-color: rgba(14, 16, 26, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #f4f4f6;
+  font-size: 0.75rem;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  border-color: #f4d24b;
+}
+
+@media (max-width: 640px) {
+  .back-link {
+    bottom: auto;
+    top: 0.75rem;
+    left: 0.75rem;
+  }
+}
