@@ -239,18 +239,22 @@ def _dias_excluidos(
 def _ocorrencias_locais(
     calendario: Calendario, inicio: date, fim: date, tribunal: str, comarca: str | None
 ) -> list[Ocorrencia]:
-    """Feriados e suspensões não nacionais, em dia de semana, entre `inicio` (exclusive) e `fim`."""
+    """Feriados e suspensões não nacionais que, sozinhos, excluem dia de semana entre `inicio` e `fim`.
+
+    Dia já excluído por ocorrência nacional (feriado em lei federal, suspensão do art. 220 do CPC)
+    não depende de prova de feriado local e não é apontado.
+    """
+    impeditivos = (TipoOcorrencia.FERIADO, TipoOcorrencia.SUSPENSAO)
     locais: list[Ocorrencia] = []
     d = inicio
     while d < fim:
         d = date.fromordinal(d.toordinal() + 1)
         if d.weekday() >= 5:
             continue
-        locais.extend(
-            o
-            for o in calendario.ocorrencias(d, tribunal, comarca)
-            if o.tribunal != NACIONAL and o.tipo in (TipoOcorrencia.FERIADO, TipoOcorrencia.SUSPENSAO)
-        )
+        do_dia = [o for o in calendario.ocorrencias(d, tribunal, comarca) if o.tipo in impeditivos]
+        if any(o.tribunal == NACIONAL for o in do_dia):
+            continue
+        locais.extend(do_dia)
     return locais
 
 

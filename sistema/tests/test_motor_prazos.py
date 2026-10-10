@@ -226,3 +226,20 @@ def test_prazo_em_dobro_alerta_sobre_litisconsortes_em_autos_eletronicos():
 
 def test_memoria_indica_o_termo_na_publicacao_do_djen():
     assert prazo(cal()).memoria[0].startswith("Termo: publicação no DJEN (Res. CNJ 455/2022, art. 11, § 3º")
+
+
+def test_feriado_local_coincidente_com_nacional_nao_gera_alerta():
+    r = prazo(cal(oc("2026-08-06", tribunal=NACIONAL), oc("2026-08-06", descricao="Também local")))
+    assert not any("1.003" in a for a in r.alertas)
+
+
+def test_calendario_publico_verificado_e_lido_e_nao_marca_cobertura():
+    from pathlib import Path
+
+    base = Path(__file__).parents[2] / "docs" / "fase0" / "dados-publicos"
+    c = Calendario.de_csv(base / "calendario_forense.csv", base / "calendario_cobertura.csv")
+    r = calcular_prazo(c, disponibilizacao=date(2026, 12, 10), dias=15, tribunal="TJPR")
+    assert r.vencimento == date(2027, 2, 4)
+    assert not r.calendario_conferido
+    locais = [a for a in r.alertas if "1.003" in a]
+    assert len(locais) == 1 and "18/12/2026" in locais[0] and "25/12/2026" not in locais[0]

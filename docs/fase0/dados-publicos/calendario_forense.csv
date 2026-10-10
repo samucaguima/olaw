@@ -1,0 +1,43 @@
+data_inicio,data_fim,tipo,tribunal,comarca,descricao,fonte
+2026-01-01,,feriado,*,,"Confraternização Universal (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2026-04-21,,feriado,*,,"Tiradentes (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2026-05-01,,feriado,*,,"Dia do Trabalho (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2026-09-07,,feriado,*,,"Independência (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2026-10-12,,feriado,*,,"Nossa Senhora Aparecida (Lei 6.802/1980, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l6802.htm
+2026-11-02,,feriado,*,,"Finados (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2026-11-15,,feriado,*,,"Proclamação da República (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2026-11-20,,feriado,*,,"Dia Nacional de Zumbi e da Consciência Negra (Lei 14.759/2023, art. 1º)",https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2023/lei/l14759.htm
+2026-12-25,,feriado,*,,"Natal (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2027-01-01,,feriado,*,,"Confraternização Universal (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2027-04-21,,feriado,*,,"Tiradentes (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2027-05-01,,feriado,*,,"Dia do Trabalho (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2027-09-07,,feriado,*,,"Independência (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2027-10-12,,feriado,*,,"Nossa Senhora Aparecida (Lei 6.802/1980, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l6802.htm
+2027-11-02,,feriado,*,,"Finados (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2027-11-15,,feriado,*,,"Proclamação da República (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2027-11-20,,feriado,*,,"Dia Nacional de Zumbi e da Consciência Negra (Lei 14.759/2023, art. 1º)",https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2023/lei/l14759.htm
+2027-12-25,,feriado,*,,"Natal (Lei 662/1949, art. 1º)",https://www.planalto.gov.br/ccivil_03/leis/l0662.htm
+2025-12-20,2026-01-20,suspensao,*,,"Suspensão do curso dos prazos processuais (CPC, art. 220)",https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm
+2026-12-20,2027-01-20,suspensao,*,,"Suspensão do curso dos prazos processuais (CPC, art. 220)",https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm
+2027-12-20,2028-01-20,suspensao,*,,"Suspensão do curso dos prazos processuais (CPC, art. 220)",https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm
+2026-01-01,,feriado,TJPR,,"Confraternização Universal (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-02-17,,feriado,TJPR,,"Carnaval (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-04-03,,feriado,TJPR,,"Paixão de Cristo (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-04-21,,feriado,TJPR,,"Tiradentes (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-05-01,,feriado,TJPR,,"Dia do Trabalho (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-06-04,,feriado,TJPR,,"Corpus Christi (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-09-07,,feriado,TJPR,,"Independência do Brasil (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-10-12,,feriado,TJPR,,"Nossa Senhora Aparecida (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-10-30,,feriado,TJPR,,"Dia do Funcionário Público, transferido de 28/10 (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-11-02,,feriado,TJPR,,"Finados (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-11-15,,feriado,TJPR,,"Proclamação da República (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-11-20,,feriado,TJPR,,"Dia Nacional de Zumbi e da Consciência Negra (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-12-18,,feriado,TJPR,,"Dia da Justiça, transferido de 08/12 (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-12-25,,feriado,TJPR,,"Natal (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-09-08,,feriado,TJPR,Curitiba,"Padroeira de Curitiba, somente no Município de Curitiba (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-02-16,,feriado,TJPR,,"Suspensão do expediente: véspera de Carnaval (art. 2º) (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-04-02,,feriado,TJPR,,"Suspensão do expediente: Quinta-feira Santa (art. 2º) (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-04-20,,feriado,TJPR,,"Suspensão do expediente: suspensão com compensação (art. 2º) (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-06-05,,feriado,TJPR,,"Suspensão do expediente: suspensão com compensação (art. 2º) (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-12-24,,feriado,TJPR,,"Suspensão do expediente: véspera de Natal (art. 3º) (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
+2026-12-31,,feriado,TJPR,,"Suspensão do expediente: véspera de Ano Novo (art. 3º) (TJPR, Decreto Judiciário 621/2025, conforme página oficial do tribunal)",https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319
