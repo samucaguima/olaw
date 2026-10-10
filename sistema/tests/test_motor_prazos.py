@@ -207,3 +207,22 @@ def test_csv_sem_fonte_indica_a_linha(tmp_path):
     )
     with pytest.raises(CalendarioInconsistente, match="linha 3.*sem fonte"):
         Calendario.de_csv(ocorrencias)
+
+
+def test_feriado_nao_nacional_gera_alerta_de_comprovacao():
+    r = prazo(cal(oc("2026-08-06", descricao="Feriado do tribunal")))
+    assert any("art. 1.003, § 6º" in a and "Feriado do tribunal" in a for a in r.alertas)
+
+
+def test_feriado_nacional_nao_gera_alerta_de_comprovacao():
+    r = prazo(cal(oc("2026-08-06", tribunal=NACIONAL)))
+    assert not any("1.003" in a for a in r.alertas)
+
+
+def test_prazo_em_dobro_alerta_sobre_litisconsortes_em_autos_eletronicos():
+    r = prazo(cal(), multiplicador=2)
+    assert any("art. 229, § 2º" in a for a in r.alertas)
+
+
+def test_memoria_indica_o_termo_na_publicacao_do_djen():
+    assert prazo(cal()).memoria[0].startswith("Termo: publicação no DJEN (Res. CNJ 455/2022, art. 11, § 3º")

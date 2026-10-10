@@ -1,18 +1,25 @@
 """Motor de prazos processuais contados da publicação no DJEN.
 
-Regras aplicadas (plano, Seções 5.2 e 7.1; fundamentos rotulados [CONFERIR]
-até a leitura integral das fontes na Fase 0):
+Regras aplicadas (plano, Seções 5.2 e 7.1). Fundamentos conferidos em
+10/10/2026 no texto integral das páginas oficiais (ver FONTES abaixo e
+docs/fase0/apis-verificadas.md, Seção 3):
 
-1. Publicação: primeiro dia útil seguinte à disponibilização no DJEN.
-2. Começo: o dia da publicação, excluído da contagem; a contagem se inicia
+1. Prazo contado da publicação no DJEN quando a lei não exigir intimação
+   pessoal (Res. CNJ 455/2022, art. 11, § 3º, na redação da Res. 569/2024).
+2. Publicação: primeiro dia útil seguinte à disponibilização.
+3. Começo: o dia da publicação, excluído da contagem; a contagem se inicia
    no primeiro dia útil seguinte.
-3. Contagem em dias úteis; feriados e suspensões não contam.
-4. Indisponibilidade do sistema ou expediente alterado no dia do começo ou
+4. Contagem em dias úteis; feriados e suspensões não contam.
+5. Indisponibilidade do sistema ou expediente alterado no dia do começo ou
    do vencimento prorroga esse dia para o primeiro dia útil seguinte.
 
 O motor devolve duas datas de vencimento. `vencimento_sem_prorrogacao`
-ignora as prorrogações da regra 4 e é a data de controle recomendada; a
+ignora as prorrogações da regra 5 e é a data de controle recomendada; a
 data com prorrogação é informativa e vem acompanhada de alerta.
+
+Quando o prazo atravessa feriado que não é nacional, o motor alerta para a
+comprovação do feriado local no ato de interposição de recurso (CPC, art.
+1.003, § 6º).
 
 A contagem em dias corridos não está implementada: a regra (termo inicial
 e efeito das suspensões) depende de definição do titular, e o motor recusa
@@ -25,13 +32,20 @@ from dataclasses import dataclass
 from datetime import date
 from enum import Enum
 
-from .calendario import Calendario, CalendarioInconsistente, formatar
+from .calendario import NACIONAL, Calendario, CalendarioInconsistente, Ocorrencia, TipoOcorrencia, formatar
 
-# [CONFERIR] Redação vigente na Fase 0 (planalto.gov.br e atos.cnj.jus.br).
+# Conferidos em 10/10/2026 no texto integral das páginas oficiais abaixo.
+FONTES = {
+    "cpc": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm",
+    "lei_11419": "https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2006/lei/l11419.htm",
+    "res_cnj_569": "https://atos.cnj.jus.br/atos/detalhar/5691",
+}
+FUNDAMENTO_TERMO = "Res. CNJ 455/2022, art. 11, § 3º, na redação da Res. CNJ 569/2024"
 FUNDAMENTO_PUBLICACAO = "Lei 11.419/2006, art. 4º, § 3º; CPC, art. 224, § 2º"
 FUNDAMENTO_INICIO = "Lei 11.419/2006, art. 4º, § 4º; CPC, art. 224, caput e § 3º"
 FUNDAMENTO_DIAS_UTEIS = "CPC, art. 219"
 FUNDAMENTO_PRORROGACAO = "CPC, art. 224, § 1º"
+FUNDAMENTO_FERIADO_LOCAL = "CPC, art. 1.003, § 6º"
 
 
 class Contagem(str, Enum):
@@ -98,6 +112,7 @@ def calcular_prazo(
     memoria: list[str] = []
     alertas: list[str] = []
 
+    memoria.append(f"Termo: publicação no DJEN ({FUNDAMENTO_TERMO}).")
     memoria.append(f"Disponibilização no DJEN: {formatar(disponibilizacao)}.")
     publicacao = calendario.proximo(disponibilizacao, tem_expediente)
     memoria.append(
@@ -136,8 +151,21 @@ def calcular_prazo(
     )
     descricao_prazo = f"{dias} dias úteis" + (" em dobro, total de " + str(total) if multiplicador == 2 else "")
     memoria.append(f"Prazo: {descricao_prazo} ({FUNDAMENTO_DIAS_UTEIS}).")
+    if multiplicador == 2:
+        alertas.append(
+            "Prazo em dobro: confirmar a hipótese legal (ex.: CPC, arts. 183 e 186). Litisconsortes com "
+            "procuradores distintos não têm prazo em dobro em autos eletrônicos (CPC, art. 229, § 2º)."
+        )
     memoria.extend(_dias_excluidos(calendario, inicio_base, vencimento_base, tribunal, comarca))
     memoria.append(f"Vencimento (data de controle): {formatar(vencimento_base)}.")
+
+    locais = _ocorrencias_locais(calendario, disponibilizacao, max(vencimento, vencimento_base), tribunal, comarca)
+    if locais:
+        alertas.append(
+            "Prazo afetado por feriado ou suspensão não nacional ("
+            + "; ".join(f"{formatar(o.data)}: {o.descricao}, fonte {o.fonte}" for o in locais)
+            + f"). Em recurso, comprovar a ocorrência no ato de interposição ({FUNDAMENTO_FERIADO_LOCAL})."
+        )
 
     prazo_interno = vencimento_base
     for _ in range(margem_interna):
@@ -206,6 +234,24 @@ def _dias_excluidos(
     if fins_de_semana:
         linhas.insert(0, f"Não contam: {fins_de_semana} dias de fim de semana no período.")
     return linhas
+
+
+def _ocorrencias_locais(
+    calendario: Calendario, inicio: date, fim: date, tribunal: str, comarca: str | None
+) -> list[Ocorrencia]:
+    """Feriados e suspensões não nacionais, em dia de semana, entre `inicio` (exclusive) e `fim`."""
+    locais: list[Ocorrencia] = []
+    d = inicio
+    while d < fim:
+        d = date.fromordinal(d.toordinal() + 1)
+        if d.weekday() >= 5:
+            continue
+        locais.extend(
+            o
+            for o in calendario.ocorrencias(d, tribunal, comarca)
+            if o.tribunal != NACIONAL and o.tipo in (TipoOcorrencia.FERIADO, TipoOcorrencia.SUSPENSAO)
+        )
+    return locais
 
 
 def _descrever(ocorrencias) -> str:
