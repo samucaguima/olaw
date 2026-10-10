@@ -3,10 +3,10 @@
 | Item | Conteúdo |
 |---|---|
 | Titular | Samuel Guimarães, OAB/RS 107.046 |
-| Versão | 1.1 (revisão de consistência; ver Seção 22) |
+| Versão | 1.2 (ver Seção 22) |
 | Data | 10/10/2026 |
 | Escopo | Sistema independente de gestão jurídica, com agente de IA (OpenAI/ChatGPT), Google Drive, Gmail, robôs de navegação nos sistemas dos tribunais, DJEN, DataJud, Asaas, Chatwoot e atendente virtual Iris |
-| Situação | Plano funcional; nenhuma linha de código do sistema foi escrita |
+| Situação | Em implementação: motor de prazos, esquema do banco e material da Fase 0 entregues em [`sistema/`](../sistema/) e [`docs/fase0/`](fase0/); demais componentes pendentes |
 
 Legenda de rótulos: **[FONTE]** norma ou documentação conferida por leitura integral na fonte oficial (nenhum item desta versão atinge esse grau, pela razão exposta na nota de método); **[CONFERIR]** dado extraído de fonte oficial apenas por trecho indexado, pendente de leitura integral; **[INTERPRETAÇÃO]** leitura técnica; **[HIPÓTESE]** estimativa ou suposição; **[RISCO]** risco operacional ou processual.
 
@@ -618,19 +618,22 @@ Requisitos de usabilidade: uso em computador e celular; ações de aprovação c
 | `clientes` | id, código (C0001), tipo (PF/PJ), nome, cpf_cnpj, contatos, drive_pasta_id, asaas_customer_id, chatwoot_contact_id |
 | `casos` | id, código (K0001), cliente_id, título, área, situação, drive_pasta_id |
 | `contratos_honorarios` | id, caso_id, modalidade, valores, percentual_exito, parcelas, documento_drive_id |
-| `processos` | id, caso_id, npu, tribunal, sistema (eproc/e-SAJ/Projudi/PJe/STJ), grau, órgão julgador, classe, polo, segredo_justica, drive_pasta_id, última sincronização |
+| `processos` | id, caso_id, npu, tribunal, comarca, sistema (eproc/e-SAJ/Projudi/PJe/STJ), grau, órgão julgador, classe, polo, segredo_justica, drive_pasta_id, última sincronização |
 | `partes` | id, processo_id, nome, polo, advogados |
 | `publicacoes` | id, processo_id, origem (DJEN), hash, data_disponibilizacao, data_publicacao, tipo, texto, certidao_drive_id, situação da triagem |
 | `movimentacoes` | id, processo_id, origem (DataJud/robô), data_hora, código, descrição |
-| `documentos` | id, processo_id, origem, evento, tipo, drive_file_id, sha256, páginas, texto_extraido, indexado |
+| `documentos` | id, processo_id ou caso_id, origem, evento, tipo, drive_file_id, sha256, páginas, texto_extraido, indexado |
+| `documentos_trechos` | id, documento_id, ordem, texto, embedding (gerado localmente; Seção 13.3) |
 | `sugestoes_ia` | id, publicacao_id ou movimentacao_id, tipo_ato, resumo, providencia, prazo_legal_id, modelo_sugerido, confiança, modelo_ia, versão do prompt |
-| `prazos` | id, processo_id, publicacao_id, regra, data_inicio, data_fatal, data_interna, situação, aprovado_por, aprovado_em |
+| `prazos` | id, processo_id, publicacao_id, prazo_legal_id, dias, multiplicador, data_publicacao, data_inicio, data_fatal (data de controle, sem prorrogação), data_fatal_com_prorrogacao, data_interna, calendario_conferido, memoria_calculo, situação, aprovado_por, aprovado_em |
 | `tarefas` | id, processo_id ou cliente_id, prazo_id (opcional), origem (publicação, movimentação, financeiro, atendimento), tipo (com prazo processual ou interna), responsável, revisor, situação, checklist, vencimento_interno |
 | `minutas` | id, tarefa_id, modelo_id, versão, docx_drive_id, pdf_drive_id, pendências_conferir, aprovado_por, aprovado_em |
-| `protocolos` | id, minuta_id, tribunal, situação (preparado/conferido/protocolado), captura_tela_id, comprovante_drive_id, protocolado_em |
+| `protocolos` | id, minuta_id, tribunal, nível (1, 2 ou 3; Seção 8.5), situação (preparado/conferido/protocolado), captura_tela_id, comprovante_drive_id, protocolado_em |
 | `audiencias` | id, processo_id, data_hora, tipo, local/link, google_event_id |
-| `cobrancas` | id, contrato_id, asaas_payment_id, vencimento, valor, situação, boleto_drive_id |
-| `calendario` | id, tribunal, comarca, data, tipo (feriado/suspensão/indisponibilidade), fonte_link, incluído_em |
+| `cobrancas` | id, contrato_id, asaas_payment_id, vencimento, valor, situação, boleto_drive_id, aprovada_por |
+| `eventos_webhook` | id, origem (Asaas, Chatwoot, Google), id_externo, tipo, payload, recebido_em, processado (deduplicação para processamento idempotente) |
+| `calendario` | id, tribunal, comarca, data, tipo (feriado/suspensão/indisponibilidade/expediente alterado), descrição, fonte_link, incluído_em, incluído_por |
+| `calendario_cobertura` | tribunal, comarca, ano, conferido_por, conferido_em (anos conferidos; sem cobertura, o cálculo sai marcado como não confiável) |
 | `modelos_peticao` | id, tipo, rito, versão, docx_drive_id, revisado_em |
 | `referencias_conferidas` | id, tipo (súmula/tema/precedente/lei), identificação, ementa/trecho, link_oficial, conferido_em, conferido_por |
 | `prazos_legais` | id, tipo_ato, dias, contagem (úteis/corridos), dispositivo, link_oficial, conferido_em, conferido_por |
@@ -852,3 +855,5 @@ Consultas realizadas em 10/10/2026, por buscador restrito a domínios oficiais (
 | 28 | A Seção 5.5 dizia que "o MVP usa navegador", mas o MVP não tem robôs | Referência corrigida para a Fase 4 | 5.5 |
 | 29 | Fonte da rota de certidão do DJEN indicada como "mesma fonte acima", que apontava outra página; Provimento 205/2021 citado sem link | Fontes explicitadas | 5.1, 19, 21 |
 | 30 | Ambiguidade da página oficial do ChatGPT agent omitida; "servidor do escritório" em contraste com servidor em nuvem; exemplo de alerta de 26 h incoerente com coleta duas vezes ao dia; fonte não oficial numa lista declarada "restrita a domínios oficiais" | Redação ajustada | 3, 13.1, 13.2, 21 |
+
+**Versão 1.2 (10/10/2026):** início da implementação. Situação atualizada no cabeçalho; Seção 15 alinhada à migração `sistema/sgj/db/migrations/0001_inicial.sql` (tabelas `documentos_trechos`, `eventos_webhook` e `calendario_cobertura`; novos campos em `processos`, `prazos`, `protocolos`, `cobrancas` e `calendario`).

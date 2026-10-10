@@ -1,0 +1,5 @@
+*.egg-info/
+.pytest_cache/
+.venv/
+# Dados reais (carteira, calendário preenchido, exportações) nunca entram no repositório
+dados/
