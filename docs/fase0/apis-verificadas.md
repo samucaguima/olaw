@@ -73,7 +73,7 @@ Cabeçalhos: `Authorization: APIKey <chave pública>` e `Content-Type: applicati
 | `tjrs` | 200 | 2 (G1 e G2) | Projudi | 09/09/2026 | 28/08/2026 | Processo do eproc informado como "Projudi" |
 | `tjsc` | 200 | total 1, lista vazia | não informado | não informado | não informado | O índice acusa o processo, mas não entrega o conteúdo |
 | `tjpr` | 200 | 1 | Eproc | 08/07/2026 | 30/06/2026 | |
-| `tjsp` | sem resposta | | | | | Timeout de 30 s; nova tentativa com 90 s registrada abaixo |
+| `tjsp` | 200 na 2ª tentativa | 1 (G1) | Projudi | 10/08/2026 | 01/07/2026 | 1ª tentativa sem resposta em 30 s; respondeu com limite de 90 s. Processo do e-SAJ ou eproc informado como "Projudi" |
 | `trf4` | 200 | 2 (JE e TR) | Projudi | 11/03/2026 | 11/11/2025 | Processo do eproc informado como "Projudi" |
 | `trt4` | 200 | 2 | PJe | 09/08/2026 | 11/11/2025 | |
 
@@ -88,3 +88,22 @@ Envelope Elasticsearch: `took`, `timed_out`, `_shards`, `hits` (`total.value`, `
 3. **Campo `sistema` não confiável.** Processos que tramitam no eproc (TJRS e TRF4) aparecem como "Projudi". O sistema de cada processo é definido pelo cadastro e pelo robô, nunca pelo DataJud.
 4. **Resposta vazia não é ausência.** `total.value` maior que zero com `hits` vazio (TJSC) e timeout (TJSP) são tratados como "sem dados utilizáveis", com nova tentativa, e não como processo inexistente.
 5. **Origem.** O DataJud respondeu a partir do Brasil; a partir do ambiente de nuvem desta sessão, a rede foi recusada pela política do ambiente (não por bloqueio do CNJ). As rotinas do titular já o consultam a partir de sessões na nuvem.
+
+## 3. Normas de contagem conferidas no texto integral
+
+Páginas oficiais obtidas na íntegra em 10/10/2026, a partir do Brasil, e lidas nos dispositivos abaixo. Rótulo: **[FONTE]**.
+
+| Norma | Dispositivo | Conteúdo conferido | Página oficial |
+|---|---|---|---|
+| Res. CNJ 569/2024 (situação: vigente) | Art. 1º, que dá nova redação ao art. 11, § 3º, da Res. CNJ 455/2022 | Quando a lei não exigir vista ou intimação pessoal, os prazos processuais contam da publicação no DJEN, na forma do art. 224, §§ 1º e 2º, do CPC; a intimação concomitante por outros meios tem valor meramente informacional | https://atos.cnj.jus.br/atos/detalhar/5691 |
+| Res. CNJ 569/2024 | Art. 2º (art. 18 da Res. 455/2022) | O Domicílio Judicial Eletrônico é usado exclusivamente para citação eletrônica e comunicações que exijam vista, ciência ou intimação pessoal | idem |
+| Lei 11.419/2006 | Art. 4º, §§ 3º e 4º | Publicação no primeiro dia útil seguinte à disponibilização; prazos a partir do primeiro dia útil seguinte à publicação | https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2006/lei/l11419.htm |
+| Lei 11.419/2006 | Art. 5º, §§ 1º a 3º | Intimação em portal próprio: considerada feita na consulta, ou automaticamente após 10 dias corridos do envio | idem |
+| CPC | Art. 219 | Contagem em dias úteis, somente para prazos processuais | https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm |
+| CPC | Art. 220 | Suspensão do curso do prazo processual de 20 de dezembro a 20 de janeiro, inclusive | idem |
+| CPC | Art. 224, caput e §§ 1º a 3º | Exclusão do dia do começo; prorrogação do começo e do vencimento por expediente alterado ou indisponibilidade; publicação no primeiro dia útil seguinte à disponibilização; contagem a partir do primeiro dia útil seguinte à publicação | idem |
+| CPC | Art. 231, VII | Dia do começo: data de publicação, quando a intimação se der pelo Diário da Justiça | idem |
+| CPC | Art. 229, § 2º | Prazo em dobro de litisconsortes com procuradores distintos não se aplica a autos eletrônicos | idem |
+| CPC | Art. 1.003, § 6º | O recorrente comprova a ocorrência de feriado local no ato de interposição | idem |
+
+Prazos usuais conferidos para a tabela de prazos legais: arts. 183 e 186 (prazo em dobro da Fazenda Pública e da Defensoria), 218, § 3º (5 dias na falta de previsão), 335 (contestação, 15 dias), 350 e 351 (manifestação do autor, 15 dias), 523 (pagamento no cumprimento de sentença, 15 dias), 525 (impugnação, 15 dias), 915 (embargos à execução, 15 dias), 1.003, § 5º (recursos e respostas, 15 dias, salvo embargos de declaração), 1.023 (embargos de declaração, 5 dias) e 1.070 (agravo contra decisão unipessoal em tribunal, 15 dias). Registro em [`dados-publicos/tabela_prazos_legais.csv`](dados-publicos/tabela_prazos_legais.csv).
