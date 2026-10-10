@@ -3,10 +3,10 @@
 | Item | Conteúdo |
 |---|---|
 | Titular | Samuel Guimarães, OAB/RS 107.046 |
-| Versão | 1.2 (ver Seção 22) |
+| Versão | 1.3 (ver Seções 22 e 23) |
 | Data | 10/10/2026 |
 | Escopo | Sistema independente de gestão jurídica, com agente de IA (OpenAI/ChatGPT), Google Drive, Gmail, robôs de navegação nos sistemas dos tribunais, DJEN, DataJud, Asaas, Chatwoot e atendente virtual Iris |
-| Situação | Em implementação: motor de prazos, esquema do banco e material da Fase 0 entregues em [`sistema/`](../sistema/) e [`docs/fase0/`](fase0/); demais componentes pendentes |
+| Situação | Em implementação: motor de prazos, esquema do banco e material da Fase 0 entregues em [`sistema/`](../sistema/) e [`docs/fase0/`](fase0/); APIs do DJEN e do DataJud verificadas em chamadas reais; recomendações aceitas pelo titular em 10/10/2026 (Seção 23) |
 
 Legenda de rótulos: **[FONTE]** norma ou documentação conferida por leitura integral na fonte oficial (nenhum item desta versão atinge esse grau, pela razão exposta na nota de método); **[CONFERIR]** dado extraído de fonte oficial apenas por trecho indexado, pendente de leitura integral; **[INTERPRETAÇÃO]** leitura técnica; **[HIPÓTESE]** estimativa ou suposição; **[RISCO]** risco operacional ou processual.
 
@@ -38,6 +38,7 @@ Legenda de rótulos: **[FONTE]** norma ou documentação conferida por leitura i
 20. [Decisões pendentes do titular](#20-decisões-pendentes-do-titular)
 21. [Fontes consultadas](#21-fontes-consultadas)
 22. [Histórico de revisões](#22-histórico-de-revisões)
+23. [Atualização de 10/10/2026: dados reais e decisões](#23-atualização-de-10102026-dados-reais-e-decisões)
 
 ---
 
@@ -303,7 +304,7 @@ O WhatsApp do advogado depende da integração com o Chatwoot (Fase 5) e, fora d
 | TJSP | eproc para ações novas; e-SAJ para o acervo | Ciclo cível do eproc iniciado em 2025; migração do acervo cível do SAJ iniciada em 02/03/2026; processos em grau de recurso não migram | **[CONFERIR]** https://www.tjsp.jus.br/eproc e https://www.tjsp.jus.br/Noticias/Noticia?codigoNoticia=113587 |
 | STJ | Central do Processo Eletrônico (CPE) | Sistema próprio | **[CONFERIR]** https://www.stj.jus.br/sites/portalp/Contato-e-ajuda/Ajuda/central-do-processo-eletronico |
 
-Nenhum dos tribunais informados aparece com PJe no cível; se a carteira incluir processo em PJe (por exemplo, em outra justiça), acrescenta-se o adaptador correspondente.
+A carteira real (Seção 23.4) inclui processos fora dos cinco tribunais informados, entre eles TRT4 (PJe, segundo o DataJud), TRT12, TRF1, TRF4, TJRJ, TJDFT, TJMT, TJMS e TJGO. O adaptador de PJe, portanto, é necessário; o sistema de cada um desses tribunais deve ser confirmado na Fase 4.
 
 **Consequência de projeto:** no TJSP e no TJPR, o sistema de cada processo deve ser registrado individualmente (campo `processos.sistema`) e reverificado periodicamente, porque processos do acervo podem migrar de sistema durante a vida do caso.
 
@@ -750,6 +751,8 @@ Ordem de prioridade justificada: as Fases 1 e 2 entregam o fluxo da imagem (DJEN
 
 ## 20. Decisões pendentes do titular
 
+> Situação em 10/10/2026: o titular aceitou todas as recomendações. A resolução de cada item está na Seção 23.6.
+
 1. Lista exata de tribunais, graus e sistemas da carteira, com número de processos ativos em cada um, distinguindo, no TJSP, e-SAJ e eproc e, no TJPR, Projudi e eproc.
 2. Inscrições na OAB (principal e suplementares em SC, PR e SP, se houver), para a coleta do DJEN por OAB.
 3. Tipo de certificado digital (A1 ou A3) e forma de login usada hoje em cada sistema (senha, segundo fator, certificado); aceitação do modelo de sessão assistida (Seção 8.2).
@@ -857,3 +860,56 @@ Consultas realizadas em 10/10/2026, por buscador restrito a domínios oficiais (
 | 30 | Ambiguidade da página oficial do ChatGPT agent omitida; "servidor do escritório" em contraste com servidor em nuvem; exemplo de alerta de 26 h incoerente com coleta duas vezes ao dia; fonte não oficial numa lista declarada "restrita a domínios oficiais" | Redação ajustada | 3, 13.1, 13.2, 21 |
 
 **Versão 1.2 (10/10/2026):** início da implementação. Situação atualizada no cabeçalho; Seção 15 alinhada à migração `sistema/sgj/db/migrations/0001_inicial.sql` (tabelas `documentos_trechos`, `eventos_webhook` e `calendario_cobertura`; novos campos em `processos`, `prazos`, `protocolos`, `cobrancas` e `calendario`).
+
+**Versão 1.3 (10/10/2026):** incorporação de verificações com chamadas reais (DJEN, DataJud), das normas conferidas no texto integral, da carteira existente e das decisões aceitas pelo titular (Seção 23); correção da Seção 8.1 quanto ao PJe.
+
+---
+
+## 23. Atualização de 10/10/2026: dados reais e decisões
+
+Detalhamento técnico e fontes em [`docs/fase0/apis-verificadas.md`](fase0/apis-verificadas.md).
+
+### 23.1 Infraestrutura existente
+
+O titular já mantém um projeto Supabase em São Paulo (PostgreSQL 17, região sa-east-1), com captura diária do DJEN em funcionamento (agendamentos internos às 09h30 e às 16h00 UTC), a base da atendente Iris e um protótipo de gestão com carteira, movimentações e tarefas. **Decisão:** esse projeto passa a ser a base do sistema. O novo núcleo será instalado em esquema próprio, ao lado dos existentes, sem alterar a captura do DJEN nem a Iris. A aplicação da migração em produção será feita em etapa própria, com cópia de segurança prévia.
+
+### 23.2 DJEN
+
+**[FATO-DOC]** A API bloqueia requisições de fora do Brasil. O contrato (rota, parâmetros, envelope `count`/`items` e campos de cada comunicação) foi conferido nas respostas reais. **Consequência:** os coletores rodam no Brasil (o banco em São Paulo), nunca em nuvem estrangeira; o DJEN já apresentou indisponibilidade (HTTP 503) e timeout, tratados como falha de coleta com nova tentativa.
+
+### 23.3 DataJud
+
+**[FATO-DOC]** Testado em seis tribunais da carteira. Responde com um registro por grau ou instância, tem defasagem de semanas a meses e informa o campo "sistema" de modo incorreto (processos do eproc apareceram como "Projudi"). **Consequência:** confirma-se que o DataJud não abre prazo nem define o sistema do processo; serve à capa e ao histórico.
+
+### 23.4 Carteira real
+
+**[FATO-DOC]** 97 processos cadastrados no protótipo, todos com numeração única válida (20 dígitos e dígito verificador conferido). Distribuição pelo segmento da numeração: Justiça Estadual, 87 (RS 47, SC 15, PR 11, SP 4, MS 3, RJ 3, MT 2, GO 1, DF 1); Justiça Federal, 5 (4ª Região 4, 1ª Região 1); Justiça do Trabalho, 5 (4ª Região 4, 12ª Região 1). Um processo está registrado como "TJRS/STJ". Pendências de qualidade: 16 grafias diferentes para o campo tribunal, 96 processos com situação "revisar", 49 com pasta de trabalho no Drive e áreas com grafias variadas. **Decisão:** a importação para o novo núcleo normaliza tribunal, sistema e área, e a situação "revisar" vira tarefa interna de conferência.
+
+**[FATO-DOC]** Nas publicações capturadas, o titular aparece apenas com a inscrição OAB/RS 107.046. A consulta nacional por essa inscrição já cobre os tribunais de todos os ramos que publicam no DJEN.
+
+### 23.5 Normas, prazos e calendário
+
+**[FONTE]** Conferidos no texto integral oficial: Res. CNJ 569/2024 (vigente), Lei 11.419/2006, CPC (arts. 219, 220, 224, 229, 231 e prazos usuais), Leis 662/1949, 6.802/1980 e 14.759/2023. O motor de prazos passou a citar esses fundamentos com link, a alertar sobre a comprovação de feriado local em recurso (CPC, art. 1.003, § 6º) e a ressalvar o prazo em dobro em autos eletrônicos (CPC, art. 229, § 2º). Calendário conferido: feriados nacionais de 2026 e 2027, suspensão do art. 220 do CPC e o calendário de 2026 do TJPR. Pendentes: atos de 2026 do TJRS, TJSC, TJSP e STJ, feriados municipais, demais tribunais e calendários de 2027.
+
+### 23.6 Decisões da Seção 20
+
+| # | Decisão | Resolução |
+|---|---|---|
+| 1 | Tribunais e sistemas | Definidos pela carteira real (23.4); sistema de cada processo confirmado pelo robô, nunca pelo DataJud |
+| 2 | Inscrições na OAB | OAB/RS 107.046, com consulta nacional no DJEN |
+| 3 | Certificado e login | Sessão assistida aceita; tipo de certificado a informar pelo titular quando a Estação Robô for montada |
+| 4 | Estação Robô | Aceita; local definido na montagem |
+| 5 | Colaboradores | Atuação individual; campos de responsável e revisor mantidos |
+| 6 | Modelos de petição | Levantamento no Drive na Fase 3 |
+| 7 | Protótipos | Reaproveitamento do projeto Supabase existente (23.1) |
+| 8 | Google Workspace | Aceita; contratação e domínio executados pelo titular |
+| 9 | Chatwoot e Iris | A Iris já opera sobre o esquema `iris` do Supabase; integração na Fase 5 a partir dessa base |
+| 10 | Segredo de justiça | IA desabilitada para processos sigilosos até nova decisão |
+| 11 | Prazo interno | 2 dias úteis antes do vencimento |
+| 12 | Mensagens padronizadas | Categoria (b) da Seção 17.3 aceita |
+| 13 | Escopo do Drive | Escopo `drive` com aplicativo interno, após a migração para o Workspace |
+
+### 23.7 Ocorrências
+
+- **[RISCO]** O portal do TJSC bloqueou como acesso não autorizado a leitura automatizada feita a partir do banco em São Paulo, e o do STJ recusou a requisição. As consultas foram interrompidas. Regra adotada: o servidor da captura do DJEN não acessa portais de tribunais.
+- A rotina agendada "Varredura DJEN nacional" falhou em 10/10/2026 por limite de uso antes de gerar o relatório; a captura no banco (status 200 às 09h30 e às 16h00 UTC) não foi afetada.

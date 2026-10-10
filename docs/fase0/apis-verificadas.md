@@ -107,3 +107,26 @@ Páginas oficiais obtidas na íntegra em 10/10/2026, a partir do Brasil, e lidas
 | CPC | Art. 1.003, § 6º | O recorrente comprova a ocorrência de feriado local no ato de interposição | idem |
 
 Prazos usuais conferidos para a tabela de prazos legais: arts. 183 e 186 (prazo em dobro da Fazenda Pública e da Defensoria), 218, § 3º (5 dias na falta de previsão), 335 (contestação, 15 dias), 350 e 351 (manifestação do autor, 15 dias), 523 (pagamento no cumprimento de sentença, 15 dias), 525 (impugnação, 15 dias), 915 (embargos à execução, 15 dias), 1.003, § 5º (recursos e respostas, 15 dias, salvo embargos de declaração), 1.023 (embargos de declaração, 5 dias) e 1.070 (agravo contra decisão unipessoal em tribunal, 15 dias). Registro em [`dados-publicos/tabela_prazos_legais.csv`](dados-publicos/tabela_prazos_legais.csv).
+
+## 4. Calendário forense
+
+Regra de inclusão: só entra no calendário ([`dados-publicos/calendario_forense.csv`](dados-publicos/calendario_forense.csv)) a data conferida na página oficial. Feriado não confirmado fica de fora, porque um feriado inexistente adiaria o vencimento calculado; a ausência de um feriado real, ao contrário, apenas antecipa a data de controle.
+
+| Conteúdo | Situação | Fonte |
+|---|---|---|
+| Feriados nacionais de 2026 e 2027: 1º/1, 21/4, 1º/5, 7/9, 2/11, 15/11, 25/12 | **[FONTE]** conferido | Lei 662/1949, art. 1º (redação da Lei 10.607/2002) |
+| 12/10 | **[FONTE]** conferido | Lei 6.802/1980, art. 1º |
+| 20/11 | **[FONTE]** conferido | Lei 14.759/2023, art. 1º |
+| Suspensão dos prazos de 20/12 a 20/1 | **[FONTE]** conferido | CPC, art. 220 |
+| TJPR, 2026: feriados e suspensões de expediente | **[FONTE]** conferido na página oficial de notícias do tribunal, que reproduz o Decreto Judiciário 621/2025 | https://www.tjpr.jus.br/noticias/-/asset_publisher/9jZB/content/tjpr-divulga-calend%C3%A1rio-de-feriados-no-ano-de-2026/18319 |
+| TJPR, feriados municipais das comarcas e alterações do Decreto Judiciário 88/2026 | **[CONFERIR]** | Tabela anexa ao decreto |
+| TJSC, 2026: Resolução GP 1/2026, alterada pelas Resoluções GP 12, 33, 37 e 45/2026 | **[CONFERIR]**: localizada por busca; o portal do TJSC bloqueou a leitura automatizada | https://www.tjsc.jus.br/calendario-institucional |
+| TJSP, 2026: Provimento CSM 2.813/2025, alterado pelo 2.845/2026 | **[CONFERIR]**: localizado por busca; a página não respondeu | https://www.tjsp.jus.br/CanaisComunicacao/Feriados/ProcessosFisicos |
+| STJ, 2026: Portaria STJ/GDG 1.010/2025; prazos suspensos de 2 a 31/7/2026 (Portaria STJ/GP 455/2026) | **[CONFERIR]**: localizado por busca; o portal do STJ recusou a leitura automatizada | https://www.stj.jus.br/sites/portalp/Paginas/Comunicacao/Noticias/2026/06012026-Portaria-define-feriados-e-pontos-facultativos-do-STJ-em-2026.aspx |
+| TJRS, 2026 | **[CONFERIR]**: ato do Órgão Especial de 2026 não localizado; os anos anteriores seguem o mesmo rito (ato anual) | https://www.tjrs.jus.br/novo/noticia/orgao-especial-aprova-calendario-de-feriados-na-justica-estadual-em-2023/ |
+| Demais tribunais da carteira (TJMS, TJRJ, TJMT, TJGO, TJDFT, TRF4, TRF1, TRT4, TRT12) | Não pesquisados | |
+| Calendários de 2027 dos tribunais | Ainda não publicados em 10/10/2026, salvo verificação em contrário | |
+
+Nenhuma cobertura foi marcada em [`calendario_cobertura.csv`](dados-publicos/calendario_cobertura.csv). Por isso o motor continua sinalizando todo cálculo como "calendário não conferido", e assim deve permanecer até o calendário de cada tribunal e comarca da carteira estar completo.
+
+**[RISCO]** Em 10/10/2026, o portal do TJSC classificou a leitura automatizada como acesso não autorizado e bloqueou temporariamente o endereço de origem (o banco em São Paulo); o portal do STJ recusou a requisição. As consultas a portais de tribunais foram interrompidas. Consequência de projeto: o servidor que captura o DJEN não acessa portais de tribunais; a leitura desses portais fica com a Estação Robô, em sessão autenticada e frequência baixa (plano, Seção 8.3).
