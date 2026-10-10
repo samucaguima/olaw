@@ -2,6 +2,12 @@
 
 Referência: [plano de implementação](../plano-sistema-gestao-juridica.md), Seção 18. A Fase 0 termina quando todos os itens marcados como **saída** estiverem concluídos.
 
+## Situação em 10/10/2026
+
+- **Concluído:** contrato das APIs do DJEN e do DataJud verificado em chamadas reais a partir do Brasil (itens B.5, B.6 e C); normas de contagem conferidas no texto integral (itens B.1 a B.4); tabela de prazos legais e calendário nacional, art. 220 do CPC e TJPR 2026 conferidos (Seção D, parcial); decisões da Seção F aceitas pelo titular. Registro em [`apis-verificadas.md`](apis-verificadas.md).
+- **Pendente:** calendários de 2026 do TJRS, TJSC, TJSP e STJ, feriados municipais e calendários de 2027; itens B.7 a B.15; contas da Seção E. A carteira já existe no Supabase do titular e será importada pelo sistema, sem planilha.
+- **Rede:** liberar domínios neste ambiente de nuvem não resolveria o DJEN, que recusa origem fora do Brasil. Os coletores rodam no banco em São Paulo.
+
 ## A. Liberação de rede do ambiente
 
 Em 10/10/2026, a política de rede do ambiente de execução recusou a conexão aos domínios abaixo (resposta "403 Forbidden" do proxy, registrada pela sondagem da Seção C). A liberação é feita nas configurações do ambiente: menu do ambiente na barra de título da sessão, Edit, Network access, Allowed domains ([instruções](https://code.claude.com/docs/en/cloud-environments#network-access)).

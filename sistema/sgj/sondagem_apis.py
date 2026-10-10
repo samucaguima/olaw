@@ -10,8 +10,9 @@ Uso:
          https://datajud-wiki.cnj.jus.br/api-publica/acesso/)
 
     python -m sgj.sondagem_apis djen --oab 107046 --uf RS --data 2026-10-09
-        (os nomes dos parâmetros do DJEN NÃO foram verificados em fonte
-         oficial; ajuste-os com --param nome=valor conforme o Swagger do CNJ)
+        (parâmetros conferidos em chamadas reais em 10/10/2026; a API do DJEN
+         recusa origem fora do Brasil, então execute a partir de máquina ou
+         servidor no país; ver docs/fase0/apis-verificadas.md)
 """
 
 from __future__ import annotations
