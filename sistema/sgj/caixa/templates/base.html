@@ -103,7 +103,7 @@
     <a href="/caixa" {% if atual.startswith("/caixa") %}class="atual"{% endif %}>Caixa de Publicações</a>
     <a href="/coletas" {% if atual == "/coletas" %}class="atual"{% endif %}>Coletas</a>
   </nav>
-  <span class="ambiente">{{ ambiente }}</span>
+  <span class="ambiente">{{ ambiente }}{% if request.state.login %} · {{ request.state.login }}{% endif %}</span>
 </header>
 <main>
 {% block conteudo %}{% endblock %}

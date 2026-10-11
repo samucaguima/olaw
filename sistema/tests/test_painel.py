@@ -225,3 +225,25 @@ def test_telas_do_painel_e_das_coletas(cliente_web):
     api = cliente_web.get("/api/painel").json()
     assert api["contagem_prazos"]["vencido"] == 1 and api["coletas"][0]["chave"] == "djen_oab"
     assert cliente_web.get("/api/coletas").json()["agendamentos"] == []
+
+
+def test_rede_privada_exige_login_autorizado(banco, cenario, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from sgj.caixa.web import criar_app
+
+    monkeypatch.setenv("SGJ_AMBIENTE", "rede_privada")
+    monkeypatch.delenv("SGJ_USUARIOS", raising=False)
+    with pytest.raises(RuntimeError, match="SGJ_USUARIOS"):
+        criar_app(banco.info.dsn)
+    monkeypatch.setenv("SGJ_USUARIOS", "Titular@Exemplo.invalid, outro@exemplo.invalid")
+    cliente = TestClient(criar_app(banco.info.dsn))
+    assert cliente.get("/").status_code == 403
+    assert cliente.get("/api/painel", headers={"Tailscale-User-Login": "intruso@exemplo.invalid"}).status_code == 403
+    pagina = cliente.get("/", headers={"Tailscale-User-Login": "titular@exemplo.invalid"})
+    assert pagina.status_code == 200
+    assert "rede privada · titular@exemplo.invalid" in pagina.text
+    assert cliente.get("/saude").json() == {"banco": "ok"}
+    monkeypatch.setenv("SGJ_AMBIENTE", "producao")
+    with pytest.raises(RuntimeError, match="SGJ_AMBIENTE=rede_privada"):
+        criar_app(banco.info.dsn)

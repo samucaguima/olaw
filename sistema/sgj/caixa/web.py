@@ -1,9 +1,12 @@
-"""Interface de teste da Caixa de Publicações (telas e API JSON).
+"""Telas e API JSON do sistema: painel "Meu dia", Caixa de Publicações e saúde das coletas.
 
-Sem autenticação: só inicia com SGJ_AMBIENTE=teste e, pelo `python -m sgj.caixa`,
-só atende no próprio computador (127.0.0.1). O painel definitivo, com login,
-vem na Fase 1 (plano, Seções 14 e 16). As ações são registradas em nome do
-titular cadastrado em sgj.usuarios.
+Ainda sem login próprio (o login Google com segundo fator vem na Fase 1; plano,
+Seção 16). Por isso só inicia em dois ambientes:
+- SGJ_AMBIENTE=teste: no próprio computador (127.0.0.1);
+- SGJ_AMBIENTE=rede_privada: no servidor, acessível só pela rede privada
+  Tailscale, que informa o login de quem acessa no cabeçalho
+  Tailscale-User-Login; só os logins de SGJ_USUARIOS entram.
+As ações são registradas em nome do titular cadastrado em sgj.usuarios.
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ from urllib.parse import urlencode
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
@@ -23,6 +26,9 @@ from ..db.conexao import conectar
 from . import painel, servico
 
 POR_PAGINA = 50
+AMBIENTES = {"teste": "ambiente de teste", "rede_privada": "rede privada"}
+CABECALHO_IDENTIDADE = "Tailscale-User-Login"
+SEM_IDENTIDADE = {"/saude"}
 MODELOS = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 
@@ -89,13 +95,44 @@ def _simulacao_json(s: servico.Simulacao) -> dict:
     }
 
 
-def criar_app(dsn: str | None = None) -> FastAPI:
-    if os.environ.get("SGJ_AMBIENTE") != "teste":
-        raise RuntimeError(
-            "Interface de teste sem autenticação: defina SGJ_AMBIENTE=teste e use somente no próprio computador."
-        )
+def _usuarios_autorizados() -> set[str]:
+    autorizados = {u.strip().lower() for u in os.environ.get("SGJ_USUARIOS", "").split(",") if u.strip()}
+    if not autorizados:
+        raise RuntimeError("Na rede privada, defina SGJ_USUARIOS com os logins autorizados, separados por vírgula.")
+    return autorizados
 
-    app = FastAPI(title="Caixa de Publicações (teste)", docs_url="/api/docs", redoc_url=None)
+
+def criar_app(dsn: str | None = None) -> FastAPI:
+    ambiente = os.environ.get("SGJ_AMBIENTE", "")
+    if ambiente not in AMBIENTES:
+        raise RuntimeError(
+            "Interface sem login próprio: defina SGJ_AMBIENTE=teste (somente no próprio computador) ou "
+            "SGJ_AMBIENTE=rede_privada (servidor acessível só pela rede privada, com SGJ_USUARIOS)."
+        )
+    autorizados = _usuarios_autorizados() if ambiente == "rede_privada" else None
+    MODELOS.env.globals["ambiente"] = AMBIENTES[ambiente]
+
+    app = FastAPI(title="Gestão jurídica", docs_url="/api/docs", redoc_url=None)
+
+    if autorizados is not None:
+        @app.middleware("http")
+        async def identidade(request: Request, call_next):
+            if request.url.path not in SEM_IDENTIDADE:
+                login = request.headers.get(CABECALHO_IDENTIDADE, "").strip().lower()
+                if login not in autorizados:
+                    return PlainTextResponse("Acesso restrito aos usuários autorizados da rede privada.", status_code=403)
+                request.state.login = login
+            return await call_next(request)
+
+    @app.get("/saude", include_in_schema=False)
+    def saude():
+        """Verificação do contêiner: responde sem identidade e sem revelar dados."""
+        try:
+            with conectar(dsn) as c:
+                c.execute("SELECT 1")
+        except Exception:
+            return JSONResponse({"banco": "indisponível"}, status_code=503)
+        return {"banco": "ok"}
 
     def conexao():
         with conectar(dsn) as c:
