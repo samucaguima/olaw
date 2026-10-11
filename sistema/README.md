@@ -7,7 +7,7 @@ Implementação do [plano de implementação](../docs/plano-sistema-gestao-jurid
 | Fase do plano | Entregue neste diretório | Pendente |
 |---|---|---|
 | 0. Preparação | Sondagem das APIs do DJEN e do DataJud (`sgj/sondagem_apis.py`); [lista de conferência e planilhas-modelo](../docs/fase0/) | Liberação de rede, leitura das fontes, teste real das APIs, planilhas preenchidas, decisões do titular |
-| 1. Núcleo e cadastro | Esquema do banco (`sgj/db/migrations/0001_inicial.sql`), com as regras do plano em restrições; importação da carteira do protótipo (`0002_importacao_prototipo.sql`) | Aplicação das migrações 0002 a 0004 em produção, autenticação, integração com o Drive, painel definitivo |
+| 1. Núcleo e cadastro | Esquema do banco (`sgj/db/migrations/0001_inicial.sql`), com as regras do plano em restrições; importação da carteira do protótipo (`0002_importacao_prototipo.sql`); migrações 0001 a 0004 aplicadas em produção em 11/10/2026 ([registro](../docs/implantacao-supabase.md)) | Autenticação, integração com o Drive, painel definitivo |
 | 2. Publicações, prazos e tarefas | Motor de prazos (`sgj/prazos/`); ligação com a captura do DJEN (`sgj.sincronizar_djen`); termo inicial na tabela de prazos legais (`0003`); coleta do DataJud (`0004`); Caixa de Publicações em ambiente de teste (`sgj/caixa/`) | Triagem pela IA, notificações, calendários dos tribunais |
 
 ## Motor de prazos
@@ -66,9 +66,9 @@ PostgreSQL 16 com pgvector. Além das tabelas da Seção 15 do plano, a migraç�
 - sistema do processo só é registrado com a fonte da confirmação (DJEN, robô ou titular);
 - tipo de pessoa conforme o CPF ou CNPJ, quando informado.
 
-A migração `0002_importacao_prototipo.sql` traz a importação da carteira do protótipo (`sgj.importar_carteira_prototipo()`) e a ligação com a captura do DJEN já existente no banco (`sgj.sincronizar_djen()`, agendada duas vezes ao dia). Ambas são repetíveis e não alteram as tabelas de origem; regras e resultado esperado em [`docs/implantacao-supabase.md`](../docs/implantacao-supabase.md), Seção 6.
+A migração `0002_importacao_prototipo.sql` traz a importação da carteira do protótipo (`sgj.importar_carteira_prototipo()`) e a ligação com a captura do DJEN já existente no banco (`sgj.sincronizar_djen()`, agendada duas vezes ao dia). Ambas são repetíveis e não alteram as tabelas de origem; regras, resultado esperado e conferência em produção em [`docs/implantacao-supabase.md`](../docs/implantacao-supabase.md), Seção 6.
 
-A migração `0003_termo_prazos_legais.sql` registra, na tabela de prazos legais, o termo inicial de cada ato (publicação no DJEN ou controle manual). A `0004_coleta_datajud.sql` cria a coleta do DataJud no próprio banco, pela extensão pg_net: consulta 30 processos por dia, grava os movimentos em `sgj.movimentacoes` (nunca abre prazo) e marca como sigiloso o processo que o DataJud indicar como tal; a chave pública do CNJ fica no Vault do Supabase. Situação da aplicação em produção na Seção 7 do mesmo documento.
+A migração `0003_termo_prazos_legais.sql` registra, na tabela de prazos legais, o termo inicial de cada ato (publicação no DJEN ou controle manual). A `0004_coleta_datajud.sql` cria a coleta do DataJud no próprio banco, pela extensão pg_net: consulta 30 processos por dia, grava os movimentos em `sgj.movimentacoes` (nunca abre prazo) e marca como sigiloso o processo que o DataJud indicar como tal; a chave pública do CNJ fica no Vault do Supabase. Aplicada em produção em 11/10/2026; conferência na Seção 7 do mesmo documento.
 
 ## Testes
 

@@ -11,6 +11,8 @@ Projeto `samuel-guimaraes-advogado` (região sa-east-1, São Paulo, PostgreSQL 1
 | 3 | Migração `sgj_0001_inicial` (arquivo [`sistema/sgj/db/migrations/0001_inicial.sql`](../sistema/sgj/db/migrations/0001_inicial.sql), sem as linhas de transação) | 30 tabelas no esquema `sgj`, todas com segurança por linha; pgvector 0.8.0 no esquema `extensions`; `anon` e `authenticated` sem acesso ao esquema; migração registrada no histórico do projeto |
 | 4 | Conferência das tabelas existentes | As 22 tabelas de `public`, `iris` e `djen` intactas, com as mesmas contagens (ex.: 97 processos, 28 tarefas, 42 comunicações do DJEN) |
 | 5 | Carga de referência | 2 usuários (titular e usuário técnico de verificação automatizada, perfil leitura); 10 prazos legais; 135 dias de calendário (feriados nacionais 2026 e 2027, suspensão do art. 220 do CPC e calendário 2026 do TJPR), todos com fonte oficial |
+| 6 | Segunda etapa (Seção 6), executada pelo titular no SQL Editor às 08h49 UTC | Resultado idêntico ao esperado em todos os itens da Seção 6.3; as 22 tabelas de `public`, `iris` e `djen` com as mesmas contagens da cópia de segurança |
+| 7 | Terceira etapa (Seção 7), executada pelo titular no SQL Editor às 08h53 UTC | 3 prazos legais de termo manual; agendamentos, chave do DataJud e acesso conferidos (Seção 7.4) |
 
 Os prazos legais e o calendário ficaram registrados como conferidos pelo usuário técnico "Claude (verificação automatizada em fonte oficial)", para distinguir essa verificação da conferência pessoal do titular. Nenhuma cobertura de calendário foi marcada.
 
@@ -43,7 +45,7 @@ A função criada pela implantação (`sgj.auditoria_imutavel`) tem `search_path
 
 ## 6. Segunda etapa: importação da carteira e ligação com o DJEN
 
-**Situação em 11/10/2026:** preparada e testada (63 testes em PostgreSQL local, com tabelas de protótipo e de captura que reproduzem a estrutura de produção). A ferramenta de acesso ao Supabase cancelou os pedidos de alteração do banco, e nada foi alterado em produção. A etapa segue para execução pelo titular no SQL Editor do Supabase, com o script único `aplicar_etapa2_supabase.sql` (migração, importação, ligação e conferência numa só transação), entregue fora do repositório. Executada pelo SQL Editor, a migração não entra no histórico de migrações do projeto; o registro fica neste documento.
+**Situação:** aplicada em produção em 11/10/2026, às 08h49 UTC, pelo titular, no SQL Editor do Supabase, com o script único `aplicar_etapa2_supabase.sql` (migração, importação, ligação e conferência numa só transação), entregue fora do repositório. Antes, a etapa foi preparada e testada (63 testes em PostgreSQL local, com tabelas de protótipo e de captura que reproduzem a estrutura de produção), e a ferramenta de acesso ao Supabase cancelou os pedidos de alteração do banco. Executada pelo SQL Editor, a migração não consta do histórico de migrações do projeto, que registra apenas `sgj_0001_inicial`; o registro fica neste documento. Conferência em produção na Seção 6.3.
 
 Decisão do titular em 11/10/2026: o CPF ou CNPJ dos clientes será informado depois.
 
@@ -76,26 +78,29 @@ Arquivo: [`sistema/sgj/db/migrations/0002_importacao_prototipo.sql`](../sistema/
 | Publicações do protótipo | Importadas com o identificador do protótipo; ao chegar a mesma comunicação pela captura (mesmo processo, mesma data e mesmo texto), recebem os dados oficiais do DJEN, sem duplicar | Mesmo texto em data diferente é outra publicação |
 | Situação da triagem | Todas as publicações entram como capturadas; a avaliação da IA antiga fica no registro de origem | A revisão é do advogado |
 
-### 6.3 Resultado esperado
+### 6.3 Resultado esperado e conferência em produção
 
-Calculado em 11/10/2026 por consultas somente de leitura sobre os dados de produção:
+O esperado foi calculado em 11/10/2026, antes da execução, por consultas somente de leitura sobre os dados de produção; a conferência, também somente de leitura, foi feita logo depois da execução.
 
-| Item | Esperado |
-|---|---|
-| Processos importados | 97 (nenhum ignorado) |
-| Clientes | 57 por nome, mais o cliente provisório, que recebe 32 processos |
-| Tarefas de conferência | 97 (96 com o item da situação "revisar") |
-| Áreas | bancário 55, cível 27, trabalhista 5, previdenciário 1, criminal 1, a definir 8 |
-| Sistema confirmado pelo DJEN | 15 processos (eproc 10, PJe 2, STJ 3); 82 a confirmar |
-| Comarca identificada pelo DJEN | 7 processos |
-| Polo passivo pela anotação | 5 processos |
-| Segredo de justiça pela anotação | 1 processo |
-| Publicações | 285: 249 do protótipo e 36 novas da captura; 6 comunicações presentes nas duas capturas recebem os dados oficiais sem duplicar |
+| Item | Esperado | Conferido |
+|---|---|---|
+| Processos importados | 97 (nenhum ignorado) | 97 |
+| Clientes | 57 por nome, mais o cliente provisório, que recebe 32 processos | 58, com o provisório e seus 32 processos; nenhum com CPF ou CNPJ |
+| Tarefas de conferência | 97 (96 com o item da situação "revisar") | 97 (96) |
+| Áreas | bancário 55, cível 27, trabalhista 5, previdenciário 1, criminal 1, a definir 8 | Idêntico |
+| Sistema confirmado pelo DJEN | 15 processos (eproc 10, PJe 2, STJ 3); 82 a confirmar | Idêntico |
+| Comarca identificada pelo DJEN | 7 processos | 7 |
+| Polo passivo pela anotação | 5 processos | 5 |
+| Segredo de justiça pela anotação | 1 processo | 1 |
+| Publicações | 285: 249 do protótipo e 36 novas da captura; 6 comunicações presentes nas duas capturas recebem os dados oficiais sem duplicar | 285: 243 só do protótipo e 42 com os dados do DJEN, das quais 6 presentes nas duas capturas |
+| Sincronização com o DJEN | Concluída | Concluída (coleta 1, 42 comunicações) |
+
+As 22 tabelas de `public`, `iris` e `djen` mantêm as mesmas contagens da cópia de segurança `bkp_20261011`.
 
 ### 6.4 Execução e conferência
 
 ```sql
--- 1. Migração (aplicada pelo histórico de migrações do projeto)
+-- 1. Migração 0002 (no SQL Editor, na mesma transação da importação)
 -- 2. Importação e ligação
 SELECT sgj.importar_carteira_prototipo();
 SELECT sgj.sincronizar_djen();
@@ -129,10 +134,11 @@ DELETE FROM sgj.importacao_legado;
 - **[RISCO]** O sistema registrado pelo DJEN reflete a comunicação mais recente: processo que voltou do STJ à origem continua marcado como STJ até nova comunicação ou conferência.
 - Os 32 processos do cliente provisório vieram da captura automática do protótipo, sem nome de cliente; a identificação depende do titular.
 - Nenhum CPF ou CNPJ foi importado, porque o protótipo não os registra.
+- **[RISCO]** Sete processos têm publicações registradas e não constam da carteira do protótipo: cinco com comunicações do DJEN entre 16/06 e 06/10/2026 (entre elas, duas sentenças, de 25/09 e de 01/10, um despacho ou decisão, de 06/10, e um ato ordinatório, de 05/10) e dois apenas com intimações do protótipo, de agosto. As 10 publicações ficaram sem processo vinculado; cadastrado o processo, a sincronização seguinte faz a ligação. Cabe ao titular verificar se atua nesses processos e se há prazo em curso.
 
 ## 7. Terceira etapa: termo dos prazos legais e coleta do DataJud
 
-**Situação em 11/10/2026:** preparada e testada (89 testes no total, com pg_net e Vault simulados). Execução pelo titular no SQL Editor, depois da segunda etapa, com o script `aplicar_etapa3_supabase.sql`, entregue fora do repositório porque contém a chave pública do DataJud.
+**Situação:** aplicada em produção em 11/10/2026, às 08h53 UTC, pelo titular, no SQL Editor, depois da segunda etapa, com o script `aplicar_etapa3_supabase.sql`, entregue fora do repositório porque contém a chave pública do DataJud. Antes, foi preparada e testada (89 testes no total, com pg_net e Vault simulados). Como a segunda, não consta do histórico de migrações do projeto. Conferência em produção na Seção 7.4.
 
 ### 7.1 Migração `sgj_0003_termo_prazos_legais`
 
@@ -166,3 +172,17 @@ DELETE FROM vault.secrets WHERE name = 'datajud_api_key';
 ```
 
 A coluna `termo` pode permanecer: o valor padrão (`publicacao`) reproduz o comportamento anterior.
+
+### 7.4 Conferência em produção
+
+Consultas somente de leitura, em 11/10/2026, depois das duas etapas:
+
+| Item | Conferido |
+|---|---|
+| Termo dos prazos legais | 3 atos de controle manual (contestação, embargos à execução, impugnação ao cumprimento de sentença); observações recuperadas em 9 dos 10 prazos (os embargos de declaração não têm observação na tabela conferida) |
+| Agendamentos | `sgj-sincronizar-djen` (09h55 e 16h55 UTC), `sgj-datajud-disparar` (10h20 UTC) e `sgj-datajud-coletar` (10h30 e 10h50 UTC), ativos e executados pelo papel `postgres`; os quatro agendamentos do esquema `djen` mantêm horários e comandos |
+| Chave do DataJud | No Vault, com o nome `datajud_api_key`, legível pelo papel dos agendamentos (verificado sem exibir o valor) |
+| Respostas do pg_net | Legíveis pelo papel dos agendamentos |
+| Processos a consultar | 97, nenhum de caso encerrado: a carteira inteira em quatro rodadas |
+| Acesso | Todas as tabelas do esquema `sgj` com segurança por linha; nenhuma das tabelas nem das 11 funções do esquema acessível a `anon` ou `authenticated` |
+| Primeira rodada automática | 11/10/2026: sincronização com o DJEN às 09h55 UTC; consulta ao DataJud às 10h20 UTC, com coleta às 10h30 e às 10h50 UTC |

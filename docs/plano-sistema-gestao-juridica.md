@@ -6,7 +6,7 @@
 | Versão | 1.6 (ver Seções 22 e 23) |
 | Data | 10/10/2026 |
 | Escopo | Sistema independente de gestão jurídica, com agente de IA (OpenAI/ChatGPT), Google Drive, Gmail, robôs de navegação nos sistemas dos tribunais, DJEN, DataJud, Asaas, Chatwoot e atendente virtual Iris |
-| Situação | Em implementação: motor de prazos, esquema do banco e material da Fase 0 entregues em [`sistema/`](../sistema/) e [`docs/fase0/`](fase0/); APIs do DJEN e do DataJud verificadas em chamadas reais; recomendações aceitas pelo titular em 10/10/2026 (Seção 23); estrutura do banco implantada no Supabase de produção em 11/10/2026; importação da carteira, ligação com a captura do DJEN e coleta do DataJud preparadas e testadas, com aplicação em produção pelo titular no SQL Editor; Caixa de Publicações em ambiente de teste |
+| Situação | Em implementação: motor de prazos, esquema do banco e material da Fase 0 entregues em [`sistema/`](../sistema/) e [`docs/fase0/`](fase0/); APIs do DJEN e do DataJud verificadas em chamadas reais; recomendações aceitas pelo titular em 10/10/2026 (Seção 23); estrutura do banco implantada no Supabase de produção em 11/10/2026; importação da carteira, ligação com a captura do DJEN e coleta do DataJud aplicadas em produção em 11/10/2026, pelo titular, no SQL Editor, com resultado conferido; Caixa de Publicações em ambiente de teste |
 
 Legenda de rótulos: **[FONTE]** norma ou documentação conferida por leitura integral na fonte oficial (nenhum item desta versão atinge esse grau, pela razão exposta na nota de método); **[CONFERIR]** dado extraído de fonte oficial apenas por trecho indexado, pendente de leitura integral; **[INTERPRETAÇÃO]** leitura técnica; **[HIPÓTESE]** estimativa ou suposição; **[RISCO]** risco operacional ou processual.
 
