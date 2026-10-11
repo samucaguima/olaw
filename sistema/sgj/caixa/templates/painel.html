@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block titulo %}Meu dia{% endblock %}
+{% block conteudo %}
+<h1>Meu dia · {{ hoje | data_longa }}</h1>
+
+{% set falhas = coletas | selectattr("situacao", "equalto", "falha") | list %}
+{% if falhas %}
+<div class="aviso alerta"><b>Falha de coleta.</b> A falta de resposta não significa ausência de publicações.
+  <ul>{% for f in falhas %}<li>{{ f.nome }}: {{ f.resumo }}</li>{% endfor %}</ul>
+  <a href="/coletas">Ver coletas</a>
+</div>
+{% endif %}
+
+<div class="indicadores">
+  <a class="indicador {% if contagem_prazos.vencido %}alerta{% endif %}" href="#prazos"><b>{{ contagem_prazos.vencido }}</b><span>prazos vencidos</span></a>
+  <a class="indicador {% if contagem_prazos.hoje %}alerta{% endif %}" href="#prazos"><b>{{ contagem_prazos.hoje }}</b><span>vencem hoje</span></a>
+  <a class="indicador {% if contagem_prazos.dois_dias %}atencao{% endif %}" href="#prazos"><b>{{ contagem_prazos.dois_dias }}</b><span>vencem em até 2 dias</span></a>
+  <a class="indicador" href="#prazos"><b>{{ contagem_prazos.semana }}</b><span>vencem em até 7 dias</span></a>
+  <a class="indicador" href="/caixa"><b>{{ publicacoes.pendentes }}</b><span>publicações a triar</span></a>
+  <a class="indicador {% if fora_da_carteira %}atencao{% endif %}" href="#fora"><b>{{ fora_da_carteira | length }}</b><span>processos fora da carteira</span></a>
+</div>
+
+<h2>Coletas</h2>
+<div class="cartao">
+  {% for f in coletas %}
+  <div class="coleta">
+    <div class="linha"><span class="ponto {{ f.situacao }}"></span><b>{{ f.nome }}</b>
+      <span class="selo {{ classe_coleta[f.situacao] }}">{{ rotulo_coleta[f.situacao] }}</span></div>
+    <div class="linha">{{ f.resumo }}</div>
+  </div>
+  {% endfor %}
+  <p class="linha"><a href="/coletas">Detalhes e agendamentos</a></p>
+</div>
+
+<h2 id="prazos">Prazos em ordem de vencimento</h2>
+{% for p in prazos %}
+<a class="cartao item prazo {{ p.semaforo }}" href="/caixa/{{ p.publicacao_id }}">
+  <div class="linha">
+    <b>{{ p.data_fatal | data }}</b>
+    <span class="selo {{ classe_semaforo[p.semaforo] }}">{{ rotulo_semaforo[p.semaforo] }}</span>
+    <span>prazo interno {{ p.data_interna | data }}</span>
+    {% if p.interno_vencido %}<span class="selo atencao">prazo interno vencido</span>{% endif %}
+    {% if not p.calendario_conferido %}<span class="selo atencao">calendário não conferido</span>{% endif %}
+    {% if p.segredo_justica %}<span class="selo alerta">segredo de justiça</span>{% endif %}
+  </div>
+  <div>{{ p.titulo or "Prazo sem tarefa" }}</div>
+  <div class="linha"><span class="npu">{{ p.npu | npu }}</span><span>{{ p.tribunal }}</span>
+    <span>{{ p.cliente_codigo }} {{ p.cliente_nome }}</span>{% if p.situacao_tarefa %}<span>{{ p.situacao_tarefa }}</span>{% endif %}</div>
+</a>
+{% else %}
+<div class="cartao">Nenhum prazo confirmado em aberto.</div>
+{% endfor %}
+
+<h2 id="fora">Publicações de processos fora da carteira</h2>
+{% if fora_da_carteira %}
+<div class="aviso atencao">Publicações em seu nome de processos que não constam da carteira. Verifique se há atuação e prazo em curso; cadastrado o processo, as publicações se ligam a ele na sincronização seguinte.</div>
+<div class="cartao tabela">
+  <table>
+    <thead><tr><th>Processo</th><th>Tribunal</th><th>Última</th><th>Tipo</th><th class="num">Publicações</th></tr></thead>
+    <tbody>
+    {% for f in fora_da_carteira %}
+      <tr><td><a class="npu" href="/caixa/{{ f.ultima_publicacao_id }}">{{ f.npu | npu }}</a></td><td>{{ f.tribunais }}</td>
+        <td>{{ f.ultima | data }}</td><td>{{ f.ultimo_tipo or "" }}</td>
+        <td class="num">{{ f.publicacoes }}{% if f.a_triar %} ({{ f.a_triar }} a triar){% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="cartao">Nenhuma.</div>
+{% endif %}
+
+<h2>Tarefas de prazo</h2>
+<div class="cartao">
+  <div class="colunas">
+    {% for rotulo, n in tarefas.colunas %}<div class="coluna"><b>{{ n }}</b><span>{{ rotulo }}</span></div>{% endfor %}
+  </div>
+  <p class="linha">{{ tarefas.abertas }} em aberto · {{ tarefas.internas }} outras tarefas internas em aberto</p>
+</div>
+
+<h2>Conferência do cadastro importado</h2>
+<div class="cartao">
+  {% set c = tarefas.conferencia %}
+  <p><b>{{ c.concluidas }} de {{ c.total }}</b> conferências concluídas.</p>
+  {% if c.total %}<progress max="{{ c.total }}" value="{{ c.concluidas }}"></progress>{% endif %}
+  {% if c.pendencias %}
+  <div class="tabela">
+    <table>
+      <thead><tr><th>Item pendente</th><th class="num">Processos</th></tr></thead>
+      <tbody>{% for i in c.pendencias %}<tr><td>{{ i.item }}</td><td class="num">{{ i.n }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<h2>Carteira</h2>
+{% set t = carteira.totais %}
+{% if t.sem_calendario %}
+<div class="aviso atencao">{{ t.sem_calendario }} de {{ t.processos }} processos estão em tribunais sem calendário de {{ carteira.ano }} conferido: o cálculo de prazo desses processos sai como não confiável.</div>
+{% endif %}
+<div class="cartao tabela">
+  <table>
+    <thead><tr><th>Tribunal</th><th class="num">Processos</th><th class="num">Sistema a confirmar</th>
+      <th class="num">Cliente a identificar</th><th class="num">Grau ou comarca a conferir</th><th>Calendário {{ carteira.ano }}</th></tr></thead>
+    <tbody>
+    {% for r in carteira.tribunais %}
+      <tr><td>{{ r.tribunal }}</td><td class="num">{{ r.processos }}</td><td class="num">{{ r.sistema_a_confirmar }}</td>
+        <td class="num">{{ r.cliente_a_identificar }}</td><td class="num">{{ r.local_a_conferir }}</td>
+        <td>{% if r.calendario_conferido %}<span class="selo ok">conferido</span>{% else %}<span class="selo atencao">não conferido</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+    <tfoot><tr><td>Total</td><td class="num">{{ t.processos }}</td><td class="num">{{ t.sistema_a_confirmar }}</td>
+      <td class="num">{{ t.cliente_a_identificar }}</td><td class="num">{{ t.local_a_conferir }}</td><td></td></tr></tfoot>
+  </table>
+</div>
+{% endblock %}

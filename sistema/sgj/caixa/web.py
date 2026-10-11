@@ -9,24 +9,36 @@ titular cadastrado em sgj.usuarios.
 from __future__ import annotations
 
 import os
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from ..db.conexao import conectar
-from . import servico
+from . import painel, servico
 
 POR_PAGINA = 50
 MODELOS = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 
+DIAS_DA_SEMANA = ("segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo")
+
+
 def _data(valor) -> str:
     return valor.strftime("%d/%m/%Y") if isinstance(valor, date) else ""
+
+
+def _data_longa(valor: date) -> str:
+    return f"{DIAS_DA_SEMANA[valor.weekday()]}, {valor.strftime('%d/%m/%Y')}"
+
+
+def _hora(valor: datetime | None) -> str:
+    return valor.astimezone(painel.FUSO).strftime("%d/%m/%Y às %Hh%M") if valor else ""
 
 
 def _npu(valor: str | None) -> str:
@@ -37,11 +49,22 @@ def _npu(valor: str | None) -> str:
 
 
 MODELOS.env.filters["data"] = _data
+MODELOS.env.filters["data_longa"] = _data_longa
+MODELOS.env.filters["hora"] = _hora
 MODELOS.env.filters["npu"] = _npu
 MODELOS.env.filters["ato"] = servico.rotulo_ato
 MODELOS.env.globals["rotulo_situacao"] = {
     "capturada": "a triar", "triada": "triada", "aprovada": "aprovada", "arquivada": "sem providência",
 }
+MODELOS.env.globals["rotulo_coleta"] = {
+    "ok": "funcionando", "atencao": "atenção", "falha": "falha", "aguardando": "aguardando", "inativa": "não instalada",
+}
+MODELOS.env.globals["classe_coleta"] = {"ok": "ok", "atencao": "atencao", "falha": "alerta", "aguardando": "", "inativa": ""}
+MODELOS.env.globals["rotulo_semaforo"] = dict(painel.SEMAFORO)
+MODELOS.env.globals["classe_semaforo"] = {
+    "vencido": "alerta", "hoje": "alerta", "dois_dias": "atencao", "semana": "", "depois": "",
+}
+MODELOS.env.globals["ambiente"] = "ambiente de teste"
 
 
 class PedidoPrazo(BaseModel):
@@ -83,9 +106,15 @@ def criar_app(dsn: str | None = None) -> FastAPI:
 
     # Telas
 
-    @app.get("/", include_in_schema=False)
-    def inicio():
-        return RedirectResponse("/caixa", status_code=303)
+    @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+    def meu_dia(request: Request, c=Depends(conexao)):
+        return MODELOS.TemplateResponse(request, "painel.html", painel.meu_dia(c))
+
+    @app.get("/coletas", response_class=HTMLResponse, include_in_schema=False)
+    def coletas(request: Request, c=Depends(conexao)):
+        return MODELOS.TemplateResponse(request, "coletas.html", {
+            "coletas": painel.saude_coletas(c), "agendamentos": painel.agendamentos(c),
+        })
 
     @app.get("/caixa", response_class=HTMLResponse, include_in_schema=False)
     def caixa(request: Request, situacao: str = "pendentes", tribunal: str = "", busca: str = "",
@@ -157,6 +186,14 @@ def criar_app(dsn: str | None = None) -> FastAPI:
         return RedirectResponse(f"/caixa/{publicacao_id}?ok=arquivado", status_code=303)
 
     # API JSON, para o painel definitivo
+
+    @app.get("/api/painel")
+    def api_painel(c=Depends(conexao)):
+        return jsonable_encoder(painel.meu_dia(c))
+
+    @app.get("/api/coletas")
+    def api_coletas(c=Depends(conexao)):
+        return jsonable_encoder({"coletas": painel.saude_coletas(c), "agendamentos": painel.agendamentos(c)})
 
     @app.get("/api/publicacoes")
     def api_listar(situacao: str = "pendentes", tribunal: str = "", busca: str = "", pagina: int = 1,

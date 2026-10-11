@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block titulo %}Caixa de Publicações{% endblock %}</title>
+<title>{% block titulo %}Caixa de Publicações{% endblock %} · Gestão jurídica</title>
 <style>
   :root {
     --fundo: #f5f6f8; --cartao: #ffffff; --texto: #1d2330; --suave: #5d6677; --borda: #dde1e8;
@@ -13,8 +13,13 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--fundo); color: var(--texto);
          font: 15px/1.5 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-  header { background: var(--destaque); color: #fff; padding: 12px 16px; }
-  header a { color: #fff; text-decoration: none; font-weight: 600; font-size: 17px; }
+  header { background: var(--destaque); color: #fff; padding: 10px 16px; display: flex; flex-wrap: wrap;
+           align-items: center; gap: 6px 18px; }
+  header a { color: #fff; text-decoration: none; font-weight: 600; }
+  header .marca { font-size: 17px; margin-right: 6px; }
+  header nav { display: flex; gap: 14px; flex-wrap: wrap; }
+  header nav a { font-weight: 500; opacity: .85; padding: 2px 0; border-bottom: 2px solid transparent; }
+  header nav a.atual { opacity: 1; border-bottom-color: #fff; }
   header .ambiente { margin-left: 8px; font-size: 12px; background: rgba(255,255,255,.18);
                      padding: 2px 8px; border-radius: 10px; vertical-align: middle; }
   main { max-width: 980px; margin: 0 auto; padding: 16px; }
@@ -23,7 +28,12 @@
   a { color: var(--destaque); }
   .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
   .indicadores { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-  .indicador { background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 8px 14px; min-width: 120px; }
+  .indicador { background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 8px 14px; min-width: 120px;
+               color: inherit; text-decoration: none; }
+  a.indicador:hover { border-color: var(--destaque); }
+  .indicador.alerta { border-color: #f3c2c2; background: var(--alerta-fundo); color: var(--alerta); }
+  .indicador.atencao { border-color: #f1d7a6; background: var(--atencao-fundo); color: var(--atencao); }
+  .indicador.alerta span, .indicador.atencao span { color: inherit; }
   .indicador b { display: block; font-size: 22px; }
   .indicador span { color: var(--suave); font-size: 13px; }
   form.filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
@@ -61,11 +71,40 @@
   .paginacao { display: flex; gap: 12px; justify-content: center; margin: 16px 0; }
   details summary { cursor: pointer; color: var(--destaque); }
   ol.memoria { margin: 8px 0 0; padding-left: 20px; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-weight: 600; color: var(--suave); font-size: 13px; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+  tfoot td { font-weight: 600; border-bottom: none; }
+  td.num, th.num { text-align: right; }
+  .tabela { overflow-x: auto; }
+  .ponto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--suave); }
+  .ponto.ok { background: var(--ok); }
+  .ponto.atencao { background: #d48a00; }
+  .ponto.falha { background: var(--alerta); }
+  .coleta + .coleta { border-top: 1px solid var(--borda); margin-top: 8px; padding-top: 8px; }
+  .prazo { border-left: 4px solid var(--borda); }
+  .prazo.vencido, .prazo.hoje { border-left-color: var(--alerta); }
+  .prazo.dois_dias { border-left-color: #d48a00; }
+  .prazo.semana { border-left-color: var(--destaque); }
+  .colunas { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+  .coluna { border: 1px solid var(--borda); border-radius: 6px; padding: 6px 10px; }
+  .coluna b { display: block; font-size: 20px; }
+  .coluna span { font-size: 13px; color: var(--suave); }
+  progress { width: 100%; height: 10px; }
   @media (max-width: 600px) { .grade { grid-template-columns: 1fr; } .grade dt { margin-top: 6px; } }
 </style>
 </head>
 <body>
-<header><a href="/caixa">Caixa de Publicações</a><span class="ambiente">ambiente de teste</span></header>
+<header>
+  <a class="marca" href="/">Gestão jurídica</a>
+  <nav>
+    {% set atual = request.url.path %}
+    <a href="/" {% if atual == "/" %}class="atual"{% endif %}>Meu dia</a>
+    <a href="/caixa" {% if atual.startswith("/caixa") %}class="atual"{% endif %}>Caixa de Publicações</a>
+    <a href="/coletas" {% if atual == "/coletas" %}class="atual"{% endif %}>Coletas</a>
+  </nav>
+  <span class="ambiente">{{ ambiente }}</span>
+</header>
 <main>
 {% block conteudo %}{% endblock %}
 </main>

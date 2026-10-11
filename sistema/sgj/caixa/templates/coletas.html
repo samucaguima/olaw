@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block titulo %}Coletas{% endblock %}
+{% block conteudo %}
+<h1>Saúde das coletas</h1>
+<p class="linha">A falta de resposta de uma coleta é falha de coleta, nunca ausência de publicações. Horários de Brasília.</p>
+
+{% for f in coletas %}
+<div class="cartao">
+  <div class="linha"><span class="ponto {{ f.situacao }}"></span><b>{{ f.nome }}</b>
+    <span class="selo {{ classe_coleta[f.situacao] }}">{{ rotulo_coleta[f.situacao] }}</span>
+    {% if f.ultima %}<span>último sucesso em {{ f.ultima | hora }}</span>{% endif %}</div>
+  <p>{{ f.resumo }}</p>
+  {% if f.detalhes %}<ul class="linha">{% for d in f.detalhes %}<li>{{ d }}</li>{% endfor %}</ul>{% endif %}
+</div>
+{% endfor %}
+
+<h2>Agendamentos</h2>
+{% if agendamentos %}
+<div class="cartao tabela">
+  <table>
+    <thead><tr><th>Rotina</th><th>Quando</th><th>Ativa</th><th>Última execução</th><th>Resultado</th></tr></thead>
+    <tbody>
+    {% for a in agendamentos %}
+      <tr><td>{{ a.jobname }}</td><td>{{ a.agenda }}</td><td>{{ "sim" if a.active else "não" }}</td><td>{{ a.quando }}</td>
+        <td>{% if a.status == "succeeded" %}<span class="selo ok">concluída</span>{% elif a.status == "failed" %}<span class="selo alerta">falhou</span> {{ a.return_message }}{% elif a.status %}{{ a.status }}{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="cartao">Agendamentos indisponíveis para esta conexão.</div>
+{% endif %}
+{% endblock %}
