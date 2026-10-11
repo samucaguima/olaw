@@ -184,27 +184,30 @@ def _hora(valor: datetime | None) -> str:
     return valor.astimezone(FUSO).strftime("%d/%m às %Hh%M") if valor else "nunca"
 
 
-def _djen_oab(cursor, agora: datetime) -> Fonte:
+def _instante(valor) -> datetime | None:
+    return datetime.fromisoformat(valor) if isinstance(valor, str) else valor
+
+
+def _situacao_captura(cursor) -> dict | None:
+    """Captura por OAB (esquema djen), lida pela função com o privilégio do proprietário (migração 0006)."""
+    cursor.execute("SELECT sgj.situacao_captura_djen() AS s")
+    s = cursor.fetchone()["s"]
+    if s is not None:
+        for chave in ("ultimo_disparo", "ultimo_sucesso"):
+            s[chave] = _instante(s.get(chave))
+    return s
+
+
+def _djen_oab(captura: dict | None, agora: datetime) -> Fonte:
     nome = "Captura do DJEN por OAB"
-    if not _existe(cursor, "djen.requisicao"):
+    if captura is None:
         return Fonte("djen_oab", nome, "inativa", "Captura não encontrada no banco.")
-    cursor.execute(
-        "WITH ultima AS (SELECT max(disparada_em) AS em FROM djen.requisicao) "
-        "SELECT (SELECT em FROM ultima) AS ultimo_disparo, "
-        "(SELECT max(disparada_em) FROM djen.requisicao WHERE status_http = 200) AS ultimo_sucesso, "
-        "count(*) AS paginas, count(*) FILTER (WHERE status_http = 200) AS ok, "
-        "count(*) FILTER (WHERE processada_em IS NULL) AS pendentes, "
-        "(array_agg(coalesce(erro, 'HTTP ' || status_http) ORDER BY disparada_em) "
-        "  FILTER (WHERE processada_em IS NOT NULL AND status_http IS DISTINCT FROM 200))[1] AS erro "
-        "FROM djen.requisicao WHERE disparada_em >= (SELECT em FROM ultima) - interval '10 minutes'"
-    )
-    r = cursor.fetchone()
+    r = captura
     if r["ultimo_disparo"] is None:
         return Fonte("djen_oab", nome, "aguardando", "Nenhuma consulta registrada.")
     detalhes = []
-    if _existe(cursor, "djen.comunicacao"):
-        cursor.execute("SELECT count(*) AS n FROM djen.comunicacao WHERE capturada_em > now() - interval '7 days'")
-        detalhes.append(f"{cursor.fetchone()['n']} comunicações capturadas nos últimos 7 dias.")
+    if "capturadas_7_dias" in r:
+        detalhes.append(f"{r['capturadas_7_dias']} comunicações capturadas nos últimos 7 dias.")
     rodada = f"Última consulta em {_hora(r['ultimo_disparo'])}: {r['ok']} de {r['paginas']} páginas com resposta válida."
     if r["ultimo_sucesso"] is None or agora - r["ultimo_sucesso"] > JANELA:
         return Fonte("djen_oab", nome, "falha",
@@ -291,7 +294,7 @@ def _datajud(cursor, agora: datetime) -> Fonte:
     return Fonte("datajud", nome, "ok", texto + ".", sucesso, detalhes)
 
 
-def _djen_processo(cursor, agora: datetime) -> Fonte:
+def _djen_processo(cursor, captura: dict | None, agora: datetime) -> Fonte:
     nome = "Consulta ao DJEN por processo"
     if not _existe(cursor, "sgj.djen_requisicao"):
         return Fonte("djen_processo", nome, "inativa", "Ainda não instalada (migração 0005).")
@@ -318,12 +321,8 @@ def _djen_processo(cursor, agora: datetime) -> Fonte:
     )
     r = cursor.fetchone()
     detalhes = []
-    if _existe(cursor, "djen.comunicacao"):
-        cursor.execute(
-            "SELECT count(*) AS n FROM sgj.djen_comunicacao s "
-            "WHERE NOT EXISTS (SELECT 1 FROM djen.comunicacao c WHERE c.id = s.id)"
-        )
-        detalhes.append(f"{cursor.fetchone()['n']} comunicações encontradas só pela consulta por processo, "
+    if captura and "so_por_processo" in captura:
+        detalhes.append(f"{captura['so_por_processo']} comunicações encontradas só pela consulta por processo, "
                         "sem a OAB do titular na intimação.")
     if suspensao["em"] is not None:
         return Fonte("djen_processo", nome, "falha",
@@ -351,7 +350,8 @@ def _djen_processo(cursor, agora: datetime) -> Fonte:
 def saude_coletas(conexao, agora: datetime | None = None) -> list[Fonte]:
     agora = agora or agora_utc()
     with conexao.cursor(row_factory=dict_row) as cursor:
-        return [_djen_oab(cursor, agora), _sincronizacao(cursor, agora), _djen_processo(cursor, agora),
+        captura = _situacao_captura(cursor)
+        return [_djen_oab(captura, agora), _sincronizacao(cursor, agora), _djen_processo(cursor, captura, agora),
                 _datajud(cursor, agora)]
 
 
@@ -382,24 +382,15 @@ def descrever_agenda(expressao: str, referencia: date | None = None) -> str:
 
 
 def agendamentos(conexao) -> list[dict]:
-    """Agendamentos do sistema e da captura do DJEN, com a última execução de cada um.
-
-    Lista vazia quando o pg_cron não existe ou o papel da conexão não pode lê-lo."""
+    """Agendamentos do sistema e da captura do DJEN, com a última execução de cada um (função da migração
+    0006). Lista vazia quando o pg_cron não existe."""
     try:
         with conexao.cursor(row_factory=dict_row) as cursor:
-            if not _existe(cursor, "cron.job"):
-                return []
-            cursor.execute(
-                "SELECT j.jobname, j.schedule, j.active, d.status, d.start_time, d.return_message "
-                "FROM cron.job j LEFT JOIN LATERAL ("
-                "  SELECT r.status, r.start_time, r.return_message FROM cron.job_run_details r "
-                "  WHERE r.jobid = j.jobid ORDER BY r.start_time DESC LIMIT 1) d ON true "
-                "WHERE j.jobname LIKE 'sgj-%' OR j.jobname LIKE 'djen-%' ORDER BY j.jobname"
-            )
+            cursor.execute("SELECT rotina, agenda, ativa, situacao, inicio, mensagem FROM sgj.agendamentos()")
             linhas = cursor.fetchall()
     except psycopg.Error:
         return []
     for linha in linhas:
-        linha["agenda"] = descrever_agenda(linha["schedule"])
-        linha["quando"] = _hora(linha["start_time"]) if linha["start_time"] else "ainda não executado"
+        linha["descricao"] = descrever_agenda(linha["agenda"])
+        linha["quando"] = _hora(linha["inicio"]) if linha["inicio"] else "ainda não executada"
     return linhas

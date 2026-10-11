@@ -21,8 +21,8 @@
     <thead><tr><th>Rotina</th><th>Quando</th><th>Ativa</th><th>Última execução</th><th>Resultado</th></tr></thead>
     <tbody>
     {% for a in agendamentos %}
-      <tr><td>{{ a.jobname }}</td><td>{{ a.agenda }}</td><td>{{ "sim" if a.active else "não" }}</td><td>{{ a.quando }}</td>
-        <td>{% if a.status == "succeeded" %}<span class="selo ok">concluída</span>{% elif a.status == "failed" %}<span class="selo alerta">falhou</span> {{ a.return_message }}{% elif a.status %}{{ a.status }}{% endif %}</td></tr>
+      <tr><td>{{ a.rotina }}</td><td>{{ a.descricao }}</td><td>{{ "sim" if a.ativa else "não" }}</td><td>{{ a.quando }}</td>
+        <td>{% if a.situacao == "succeeded" %}<span class="selo ok">concluída</span>{% elif a.situacao == "failed" %}<span class="selo alerta">falhou</span> {{ a.mensagem }}{% elif a.situacao %}{{ a.situacao }}{% endif %}</td></tr>
     {% endfor %}
     </tbody>
   </table>
