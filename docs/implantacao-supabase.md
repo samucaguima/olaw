@@ -43,7 +43,7 @@ A função criada pela implantação (`sgj.auditoria_imutavel`) tem `search_path
 
 ## 6. Segunda etapa: importação da carteira e ligação com o DJEN
 
-**Situação em 11/10/2026:** preparada e testada (63 testes em PostgreSQL local, com tabelas de protótipo e de captura que reproduzem a estrutura de produção). A aplicação em produção aguarda a aprovação do titular na ferramenta de acesso ao Supabase, que exige confirmação para alterar o banco. Nada foi alterado em produção nesta etapa.
+**Situação em 11/10/2026:** preparada e testada (63 testes em PostgreSQL local, com tabelas de protótipo e de captura que reproduzem a estrutura de produção). A ferramenta de acesso ao Supabase cancelou os pedidos de alteração do banco, e nada foi alterado em produção. A etapa segue para execução pelo titular no SQL Editor do Supabase, com o script único `aplicar_etapa2_supabase.sql` (migração, importação, ligação e conferência numa só transação), entregue fora do repositório. Executada pelo SQL Editor, a migração não entra no histórico de migrações do projeto; o registro fica neste documento.
 
 Decisão do titular em 11/10/2026: o CPF ou CNPJ dos clientes será informado depois.
 
@@ -129,3 +129,40 @@ DELETE FROM sgj.importacao_legado;
 - **[RISCO]** O sistema registrado pelo DJEN reflete a comunicação mais recente: processo que voltou do STJ à origem continua marcado como STJ até nova comunicação ou conferência.
 - Os 32 processos do cliente provisório vieram da captura automática do protótipo, sem nome de cliente; a identificação depende do titular.
 - Nenhum CPF ou CNPJ foi importado, porque o protótipo não os registra.
+
+## 7. Terceira etapa: termo dos prazos legais e coleta do DataJud
+
+**Situação em 11/10/2026:** preparada e testada (89 testes no total, com pg_net e Vault simulados). Execução pelo titular no SQL Editor, depois da segunda etapa, com o script `aplicar_etapa3_supabase.sql`, entregue fora do repositório porque contém a chave pública do DataJud.
+
+### 7.1 Migração `sgj_0003_termo_prazos_legais`
+
+Arquivo: [`sistema/sgj/db/migrations/0003_termo_prazos_legais.sql`](../sistema/sgj/db/migrations/0003_termo_prazos_legais.sql).
+
+A carga de referência de 11/10/2026 não trouxe as observações da tabela de prazos legais conferida em 10/10/2026. Sem elas, a contestação (CPC, art. 335), os embargos à execução (CPC, art. 915) e a impugnação ao cumprimento de sentença (CPC, art. 525) poderiam ser calculados a partir da publicação no DJEN, o que a própria tabela afasta. A migração cria a coluna `termo` (`publicacao` ou `manual`), marca esses três atos como de controle manual e recupera as observações, inclusive o `[CONFERIR]` do pagamento do art. 523. A Caixa de Publicações recusa o cálculo automático dos atos de termo manual.
+
+### 7.2 Migração `sgj_0004_coleta_datajud`
+
+Arquivo: [`sistema/sgj/db/migrations/0004_coleta_datajud.sql`](../sistema/sgj/db/migrations/0004_coleta_datajud.sql).
+
+| Item | Regra |
+|---|---|
+| Consulta | `sgj.datajud_disparar(30)`, às 10h20 UTC: até 30 processos de casos não encerrados por dia, começando pelos consultados há mais tempo; a carteira inteira a cada quatro dias, compatível com a defasagem do DataJud |
+| Coleta | `sgj.datajud_coletar()`, às 10h30 e às 10h50 UTC: grava os movimentos de todos os registros (um por grau ou instância), sem duplicar |
+| Efeito | Movimentação do DataJud nunca abre prazo (plano, Seção 5.4); serve à capa e ao histórico |
+| Sigilo | Registro com nível de sigilo maior que zero marca o processo como em segredo de justiça, o que desabilita a IA para ele (efeito só conservador) |
+| Falhas | Erro HTTP, resposta vazia e falta de resposta em 6 horas (retenção do pg_net) ficam registrados em `sgj.datajud_requisicao`; o resumo de cada rodada fica em `sgj.coletas` |
+| Chave | Vault do Supabase, nome `datajud_api_key`; fora do repositório |
+| Aliases | `tjrs`, `tjsc`, `tjpr`, `tjsp`, `trf4` e `trt4` conferidos em chamada real em 10/10/2026; os demais seguem o mesmo padrão de nome e, se recusados, ficam registrados como erro |
+
+### 7.3 Como desfazer a terceira etapa
+
+```sql
+SELECT cron.unschedule('sgj-datajud-disparar');
+SELECT cron.unschedule('sgj-datajud-coletar');
+DELETE FROM sgj.movimentacoes WHERE origem = 'datajud';
+DELETE FROM sgj.coletas WHERE fonte = 'datajud';
+DROP TABLE sgj.datajud_requisicao;
+DELETE FROM vault.secrets WHERE name = 'datajud_api_key';
+```
+
+A coluna `termo` pode permanecer: o valor padrão (`publicacao`) reproduz o comportamento anterior.

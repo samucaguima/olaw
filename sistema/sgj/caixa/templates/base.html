@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}Caixa de Publicações{% endblock %}</title>
+<style>
+  :root {
+    --fundo: #f5f6f8; --cartao: #ffffff; --texto: #1d2330; --suave: #5d6677; --borda: #dde1e8;
+    --destaque: #1f4e8c; --destaque-claro: #e8eff9; --alerta: #9a1c1c; --alerta-fundo: #fdecec;
+    --atencao: #7a4b00; --atencao-fundo: #fff4e0; --ok: #1d6b3a; --ok-fundo: #e6f4ea;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: var(--texto);
+         font: 15px/1.5 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  header { background: var(--destaque); color: #fff; padding: 12px 16px; }
+  header a { color: #fff; text-decoration: none; font-weight: 600; font-size: 17px; }
+  header .ambiente { margin-left: 8px; font-size: 12px; background: rgba(255,255,255,.18);
+                     padding: 2px 8px; border-radius: 10px; vertical-align: middle; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 4px 0 12px; }
+  h2 { font-size: 16px; margin: 20px 0 8px; }
+  a { color: var(--destaque); }
+  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+  .indicadores { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .indicador { background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 8px 14px; min-width: 120px; }
+  .indicador b { display: block; font-size: 22px; }
+  .indicador span { color: var(--suave); font-size: 13px; }
+  form.filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+  label { font-size: 13px; color: var(--suave); display: block; }
+  input, select, textarea { font: inherit; padding: 7px 9px; border: 1px solid var(--borda); border-radius: 6px; background: #fff; max-width: 100%; }
+  button { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--destaque);
+           background: var(--destaque); color: #fff; cursor: pointer; }
+  button.secundario { background: #fff; color: var(--destaque); }
+  button.discreto { background: #fff; color: var(--suave); border-color: var(--borda); }
+  .item { display: block; text-decoration: none; color: inherit; }
+  .item:hover { border-color: var(--destaque); }
+  .linha { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--suave); }
+  .selo { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: var(--destaque-claro); color: var(--destaque); }
+  .selo.alerta { background: var(--alerta-fundo); color: var(--alerta); }
+  .selo.atencao { background: var(--atencao-fundo); color: var(--atencao); }
+  .selo.ok { background: var(--ok-fundo); color: var(--ok); }
+  .npu { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--texto); }
+  .trecho { margin-top: 6px; color: var(--texto); }
+  .texto { white-space: pre-wrap; max-height: 420px; overflow: auto; background: #fafbfc;
+           border: 1px solid var(--borda); border-radius: 6px; padding: 12px; font-size: 14px; }
+  .aviso { border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
+  .aviso.alerta { background: var(--alerta-fundo); color: var(--alerta); border: 1px solid #f3c2c2; }
+  .aviso.atencao { background: var(--atencao-fundo); color: var(--atencao); border: 1px solid #f1d7a6; }
+  .aviso.ok { background: var(--ok-fundo); color: var(--ok); border: 1px solid #b9dfc5; }
+  .aviso ul { margin: 6px 0 0; padding-left: 20px; }
+  .datas { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 8px 0 12px; }
+  .data { border: 1px solid var(--borda); border-radius: 6px; padding: 8px 10px; }
+  .data span { display: block; font-size: 12px; color: var(--suave); }
+  .data b { font-size: 18px; }
+  .data.principal { border-color: var(--destaque); background: var(--destaque-claro); }
+  .grade { display: grid; grid-template-columns: 160px 1fr; gap: 4px 12px; font-size: 14px; }
+  .grade dt { color: var(--suave); }
+  .grade dd { margin: 0; }
+  .acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .paginacao { display: flex; gap: 12px; justify-content: center; margin: 16px 0; }
+  details summary { cursor: pointer; color: var(--destaque); }
+  ol.memoria { margin: 8px 0 0; padding-left: 20px; font-size: 14px; }
+  @media (max-width: 600px) { .grade { grid-template-columns: 1fr; } .grade dt { margin-top: 6px; } }
+</style>
+</head>
+<body>
+<header><a href="/caixa">Caixa de Publicações</a><span class="ambiente">ambiente de teste</span></header>
+<main>
+{% block conteudo %}{% endblock %}
+</main>
+</body>
+</html>

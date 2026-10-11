@@ -7,8 +7,8 @@ Implementação do [plano de implementação](../docs/plano-sistema-gestao-jurid
 | Fase do plano | Entregue neste diretório | Pendente |
 |---|---|---|
 | 0. Preparação | Sondagem das APIs do DJEN e do DataJud (`sgj/sondagem_apis.py`); [lista de conferência e planilhas-modelo](../docs/fase0/) | Liberação de rede, leitura das fontes, teste real das APIs, planilhas preenchidas, decisões do titular |
-| 1. Núcleo e cadastro | Esquema do banco (`sgj/db/migrations/0001_inicial.sql`), com as regras do plano em restrições; importação da carteira do protótipo (`0002_importacao_prototipo.sql`) | Aplicação da importação em produção, API, autenticação, integração com o Drive, dashboard |
-| 2. Publicações, prazos e tarefas | Motor de prazos (`sgj/prazos/`); ligação com a captura do DJEN (`sgj.sincronizar_djen`) | Triagem pela IA, tarefas de prazo, notificações |
+| 1. Núcleo e cadastro | Esquema do banco (`sgj/db/migrations/0001_inicial.sql`), com as regras do plano em restrições; importação da carteira do protótipo (`0002_importacao_prototipo.sql`) | Aplicação das migrações 0002 a 0004 em produção, autenticação, integração com o Drive, painel definitivo |
+| 2. Publicações, prazos e tarefas | Motor de prazos (`sgj/prazos/`); ligação com a captura do DJEN (`sgj.sincronizar_djen`); termo inicial na tabela de prazos legais (`0003`); coleta do DataJud (`0004`); Caixa de Publicações em ambiente de teste (`sgj/caixa/`) | Triagem pela IA, notificações, calendários dos tribunais |
 
 ## Motor de prazos
 
@@ -33,6 +33,24 @@ r = calcular_prazo(calendario, disponibilizacao=date(2026, 8, 3), dias=15, tribu
 r.data_controle, r.prazo_interno, r.alertas, r.memoria
 ```
 
+## Caixa de Publicações (ambiente de teste)
+
+Fluxo da Seção 6.2 do plano sem a IA, que entra quando houver a conta da OpenAI: o advogado abre a publicação, escolhe o ato na tabela de prazos legais (ou informa os dias, com marca `[CONFERIR]`), vê o cálculo do motor com a memória e os alertas e aprova; a aprovação grava o prazo como confirmado, cria a tarefa e registra a auditoria. "Sem providência" arquiva a publicação com o motivo.
+
+Regras aplicadas:
+
+- o calendário usado é o do tribunal que publicou (a publicação do STJ segue o calendário do STJ, ainda que o processo venha do TJRS);
+- a comarca só entra no cálculo quando o processo está no primeiro grau do mesmo tribunal; sem grau ou comarca, os feriados municipais ficam de fora (data mais cedo, critério conservador) e o cálculo sai como não confiável;
+- ato cujo prazo não corre da publicação no DJEN (contestação, embargos à execução, impugnação ao cumprimento de sentença) é recusado, com a indicação de controle manual;
+- o cálculo é refeito no servidor no momento da aprovação; publicação já tratada não é aprovada de novo, e publicação de processo não cadastrado não recebe prazo.
+
+```bash
+pip install -e ".[web]"
+SGJ_AMBIENTE=teste SGJ_DB_DSN="host=... dbname=..." python -m sgj.caixa   # http://127.0.0.1:8000
+```
+
+Sem autenticação: a interface só inicia com `SGJ_AMBIENTE=teste` e só atende no próprio computador. A API JSON (`/api/...`, documentada em `/api/docs`) é a base do painel definitivo.
+
 ## Banco de dados
 
 Implantado em 11/10/2026 no esquema `sgj` do Supabase de produção (São Paulo), ao lado dos esquemas existentes; ver [`docs/implantacao-supabase.md`](../docs/implantacao-supabase.md).
@@ -49,6 +67,8 @@ PostgreSQL 16 com pgvector. Além das tabelas da Seção 15 do plano, a migraç�
 - tipo de pessoa conforme o CPF ou CNPJ, quando informado.
 
 A migração `0002_importacao_prototipo.sql` traz a importação da carteira do protótipo (`sgj.importar_carteira_prototipo()`) e a ligação com a captura do DJEN já existente no banco (`sgj.sincronizar_djen()`, agendada duas vezes ao dia). Ambas são repetíveis e não alteram as tabelas de origem; regras e resultado esperado em [`docs/implantacao-supabase.md`](../docs/implantacao-supabase.md), Seção 6.
+
+A migração `0003_termo_prazos_legais.sql` registra, na tabela de prazos legais, o termo inicial de cada ato (publicação no DJEN ou controle manual). A `0004_coleta_datajud.sql` cria a coleta do DataJud no próprio banco, pela extensão pg_net: consulta 30 processos por dia, grava os movimentos em `sgj.movimentacoes` (nunca abre prazo) e marca como sigiloso o processo que o DataJud indicar como tal; a chave pública do CNJ fica no Vault do Supabase. Situação da aplicação em produção na Seção 7 do mesmo documento.
 
 ## Testes
 

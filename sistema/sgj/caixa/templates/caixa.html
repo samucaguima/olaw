@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<div class="indicadores">
+  <div class="indicador"><b>{{ resumo.pendentes }}</b><span>a triar</span></div>
+  <div class="indicador"><b>{{ resumo.recentes }}</b><span>a triar, últimos 30 dias</span></div>
+  <div class="indicador"><b>{{ resumo.sem_processo }}</b><span>a triar sem processo cadastrado</span></div>
+</div>
+
+<form class="filtros" method="get" action="/caixa">
+  <div>
+    <label for="situacao">Situação</label>
+    <select id="situacao" name="situacao">
+      {% for valor, nome in [("pendentes", "A triar"), ("aprovada", "Aprovadas"), ("arquivada", "Sem providência"), ("todas", "Todas")] %}
+      <option value="{{ valor }}" {% if filtros.situacao == valor %}selected{% endif %}>{{ nome }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="tribunal">Tribunal</label>
+    <select id="tribunal" name="tribunal">
+      <option value="">Todos</option>
+      {% for t in resumo.tribunais %}
+      <option value="{{ t }}" {% if filtros.tribunal == t %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="busca">Processo ou cliente</label>
+    <input id="busca" name="busca" value="{{ filtros.busca }}" placeholder="número, nome ou título">
+  </div>
+  <button type="submit">Filtrar</button>
+</form>
+
+<p class="linha">{{ total }} {{ "publicações" if total != 1 else "publicação" }} · página {{ pagina }} de {{ paginas }}</p>
+
+{% for p in itens %}
+<a class="cartao item" href="/caixa/{{ p.id }}">
+  <div class="linha">
+    <b>{{ p.data_disponibilizacao | data }}</b>
+    <span class="selo">{% if p.tribunal %}{{ p.tribunal }}{% elif p.processo_tribunal %}{{ p.processo_tribunal }} (origem){% else %}tribunal não informado{% endif %}</span>
+    {% if p.tipo_comunicacao %}<span>{{ p.tipo_comunicacao }}</span>{% endif %}
+    <span class="selo {% if p.situacao_triagem in ('capturada', 'triada') %}atencao{% elif p.situacao_triagem == 'aprovada' %}ok{% endif %}">{{ rotulo_situacao[p.situacao_triagem] }}</span>
+    {% if p.processo_id is none %}<span class="selo alerta">processo não cadastrado</span>{% endif %}
+    {% if p.segredo_justica %}<span class="selo alerta">segredo de justiça</span>{% endif %}
+  </div>
+  <div class="linha"><span class="npu">{{ p.npu | npu }}</span>
+    {% if p.cliente_nome %}<span>{{ p.cliente_codigo }} {{ p.cliente_nome }}</span>{% endif %}
+  </div>
+  {% if p.caso_titulo %}<div class="linha">{{ p.caso_titulo }}</div>{% endif %}
+  <div class="trecho">{{ p.texto[:220] }}{% if p.texto | length > 220 %}…{% endif %}</div>
+</a>
+{% else %}
+<div class="cartao">Nenhuma publicação neste filtro.</div>
+{% endfor %}
+
+{% if paginas > 1 %}
+<nav class="paginacao">
+  {% if pagina > 1 %}<a href="/caixa?{{ consulta(pagina=pagina - 1) }}">anterior</a>{% endif %}
+  {% if pagina < paginas %}<a href="/caixa?{{ consulta(pagina=pagina + 1) }}">próxima</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

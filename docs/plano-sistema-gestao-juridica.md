@@ -3,10 +3,10 @@
 | Item | Conteúdo |
 |---|---|
 | Titular | Samuel Guimarães, OAB/RS 107.046 |
-| Versão | 1.5 (ver Seções 22 e 23) |
+| Versão | 1.6 (ver Seções 22 e 23) |
 | Data | 10/10/2026 |
 | Escopo | Sistema independente de gestão jurídica, com agente de IA (OpenAI/ChatGPT), Google Drive, Gmail, robôs de navegação nos sistemas dos tribunais, DJEN, DataJud, Asaas, Chatwoot e atendente virtual Iris |
-| Situação | Em implementação: motor de prazos, esquema do banco e material da Fase 0 entregues em [`sistema/`](../sistema/) e [`docs/fase0/`](fase0/); APIs do DJEN e do DataJud verificadas em chamadas reais; recomendações aceitas pelo titular em 10/10/2026 (Seção 23); estrutura do banco implantada no Supabase de produção em 11/10/2026; importação da carteira e ligação com a captura do DJEN preparadas e testadas, com aplicação em produção pendente de aprovação do titular |
+| Situação | Em implementação: motor de prazos, esquema do banco e material da Fase 0 entregues em [`sistema/`](../sistema/) e [`docs/fase0/`](fase0/); APIs do DJEN e do DataJud verificadas em chamadas reais; recomendações aceitas pelo titular em 10/10/2026 (Seção 23); estrutura do banco implantada no Supabase de produção em 11/10/2026; importação da carteira, ligação com a captura do DJEN e coleta do DataJud preparadas e testadas, com aplicação em produção pelo titular no SQL Editor; Caixa de Publicações em ambiente de teste |
 
 Legenda de rótulos: **[FONTE]** norma ou documentação conferida por leitura integral na fonte oficial (nenhum item desta versão atinge esse grau, pela razão exposta na nota de método); **[CONFERIR]** dado extraído de fonte oficial apenas por trecho indexado, pendente de leitura integral; **[INTERPRETAÇÃO]** leitura técnica; **[HIPÓTESE]** estimativa ou suposição; **[RISCO]** risco operacional ou processual.
 
@@ -637,7 +637,7 @@ Requisitos de usabilidade: uso em computador e celular; ações de aprovação c
 | `calendario_cobertura` | tribunal, comarca, ano, conferido_por, conferido_em (anos conferidos; sem cobertura, o cálculo sai marcado como não confiável) |
 | `modelos_peticao` | id, tipo, rito, versão, docx_drive_id, revisado_em |
 | `referencias_conferidas` | id, tipo (súmula/tema/precedente/lei), identificação, ementa/trecho, link_oficial, conferido_em, conferido_por |
-| `prazos_legais` | id, tipo_ato, dias, contagem (úteis/corridos), dispositivo, link_oficial, conferido_em, conferido_por |
+| `prazos_legais` | id, tipo_ato, dias, contagem (úteis/corridos), termo inicial (publicação no DJEN ou controle manual), dispositivo, link_oficial, observações, conferido_em, conferido_por |
 | `usuarios` | id, nome, e-mail, perfil (titular, colaborador, leitura), ativo |
 | `regras_distribuicao` | id, tipo_ato, tribunal, cliente_id, responsável, revisor |
 | `coletas` | id, fonte (DJEN, DataJud, robô por sistema), início, fim, situação, itens, erro |
@@ -647,6 +647,7 @@ Requisitos de usabilidade: uso em computador e celular; ações de aprovação c
 | `envios` | id, canal, destinatário, conteúdo, anexos, relatório PIE, autorizado_por, autorizado_em, enviado_em |
 | `auditoria` | id, usuário, ação, entidade, entidade_id, antes, depois, data_hora |
 | `importacao_legado` | origem, origem_id, destino, destino_id, observações (valores de origem não aproveitados), importado_em |
+| `datajud_requisicao` | request_id, processo_id, alias, disparada_em, processada_em, status_http, registros, movimentos_novos, erro |
 
 ---
 
@@ -867,6 +868,8 @@ Consultas realizadas em 10/10/2026, por buscador restrito a domínios oficiais (
 **Versão 1.4 (11/10/2026):** implantação da estrutura do banco no Supabase de produção, no esquema `sgj`, com cópia de segurança prévia e carga dos dados de referência verificados (Seção 23.1).
 
 **Versão 1.5 (11/10/2026):** preparação da importação da carteira do protótipo e da ligação com a captura do DJEN (migração `0002_importacao_prototipo.sql`), com as decisões do titular sobre CPF e cliente não identificado (Seção 23.4); Seção 15 alinhada à migração.
+
+**Versão 1.6 (11/10/2026):** termo inicial na tabela de prazos legais, para impedir o cálculo, a partir da publicação no DJEN, de atos com termo diverso (migração `0003`); coleta do DataJud no banco (migração `0004`); Caixa de Publicações em ambiente de teste, com cálculo pelo motor de prazos, aprovação, tarefa e auditoria (`sistema/sgj/caixa/`).
 
 ---
 

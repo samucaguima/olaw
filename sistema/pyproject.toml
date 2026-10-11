@@ -6,7 +6,9 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+banco = ["psycopg[binary]>=3.2"]
+web = ["psycopg[binary]>=3.2", "fastapi>=0.110", "jinja2>=3.1", "python-multipart>=0.0.9", "uvicorn>=0.29"]
+dev = ["pytest>=8", "httpx>=0.27"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -14,6 +16,10 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["sgj*"]
+
+[tool.setuptools.package-data]
+"sgj.caixa" = ["templates/*.html"]
+"sgj.db" = ["migrations/*.sql"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

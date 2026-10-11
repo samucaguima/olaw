@@ -84,6 +84,15 @@ def test_tarefa_com_prazo_processual_exige_prazo(banco, base):
     )
 
 
+def test_prazo_legal_registra_o_termo_inicial(banco, base):
+    legal = (
+        "INSERT INTO prazos_legais (tipo_ato, dias, contagem, dispositivo, link_oficial, conferido_em, conferido_por, termo) "
+        "VALUES (%s, 15, 'uteis', 'dispositivo', 'https://exemplo.invalid', '2026-10-10', %s, %s)"
+    )
+    rejeita(banco, legal, ("termo invalido", base["usuario"], "citacao"))
+    aceita(banco, legal, ("termo manual", base["usuario"], "manual"))
+
+
 def test_movimentacao_nao_recebe_prazo_legal(banco, base):
     usuario = base["usuario"]
     prazo_legal = aceita(
@@ -179,7 +188,7 @@ def test_todos_os_objetos_ficam_no_esquema_sgj_com_rls(banco, base):
     ).fetchone()[0]
     assert sem_rls == 0
     total = banco.execute("SELECT count(*) FROM pg_tables WHERE schemaname = 'sgj'").fetchone()[0]
-    assert total == 31
+    assert total == 32
 
 
 def test_papel_sem_privilegio_nao_le_o_esquema(banco, base):

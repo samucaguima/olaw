@@ -65,7 +65,7 @@ Modelos em [`modelos/`](modelos/). Não incluir dados de clientes em repositóri
 | Planilha | Conteúdo | Colunas |
 |---|---|---|
 | `inventario_carteira.csv` | Um processo por linha | código e nome do cliente; tipo de pessoa (PF/PJ); CPF ou CNPJ só com dígitos; código e título do caso; NPU com 20 dígitos; tribunal; comarca; sistema (`eproc`, `esaj`, `projudi`, `pje`, `cpe_stj`); grau; polo; segredo de justiça (sim/não) |
-| `tabela_prazos_legais.csv` | Um tipo de ato por linha, conferido pelo titular | tipo de ato; dias; contagem (`uteis` ou `corridos`); dispositivo; link oficial; data e autor da conferência |
+| `tabela_prazos_legais.csv` | Um tipo de ato por linha, conferido pelo titular | tipo de ato; dias; contagem (`uteis` ou `corridos`); termo inicial (`publicacao`, contado da publicação no DJEN, ou `manual`); dispositivo; link oficial; data e autor da conferência; observações |
 | `calendario_forense.csv` | Feriados, suspensões, indisponibilidades e expedientes alterados | `data_inicio` e `data_fim` (AAAA-MM-DD; `data_fim` vazio para um só dia); `tipo` (`feriado`, `suspensao`, `indisponibilidade`, `expediente_alterado`); `tribunal` (sigla, ou `*` para nacional); `comarca` (vazio para todo o tribunal); `descricao`; `fonte` (link obrigatório) |
 | `calendario_cobertura.csv` | Anos conferidos por tribunal e comarca | tribunal; comarca (vazio para o tribunal sem feriados municipais); ano; quem conferiu; quando |
 

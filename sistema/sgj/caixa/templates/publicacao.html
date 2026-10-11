@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block titulo %}Publicação {{ p.npu | npu }}{% endblock %}
+{% block conteudo %}
+<p><a href="/caixa">Voltar à caixa</a></p>
+
+{% if mensagem %}<div class="aviso ok">{{ mensagem }}</div>{% endif %}
+{% if erro %}<div class="aviso alerta"><b>Não executado.</b> {{ erro }}</div>{% endif %}
+
+<div class="cartao">
+  <div class="linha">
+    <span class="selo">{% if p.tribunal %}{{ p.tribunal }}{% elif p.processo_tribunal %}{{ p.processo_tribunal }} (origem){% else %}tribunal não informado{% endif %}</span>
+    <span class="selo {% if pendente %}atencao{% elif p.situacao_triagem == 'aprovada' %}ok{% endif %}">{{ rotulo_situacao[p.situacao_triagem] }}</span>
+    {% if p.segredo_justica %}<span class="selo alerta">segredo de justiça</span>{% endif %}
+  </div>
+  <h1 class="npu">{{ p.npu | npu }}</h1>
+  <dl class="grade">
+    <dt>Disponibilização no DJEN</dt><dd>{{ p.data_disponibilizacao | data }}</dd>
+    {% if p.tipo_comunicacao %}<dt>Tipo</dt><dd>{{ p.tipo_comunicacao }}{% if p.tipo_documento %} ({{ p.tipo_documento }}){% endif %}</dd>{% endif %}
+    {% if p.orgao %}<dt>Órgão</dt><dd>{{ p.orgao }}</dd>{% endif %}
+    {% if p.classe %}<dt>Classe</dt><dd>{{ p.classe }}</dd>{% endif %}
+    {% if p.processo_id %}
+      <dt>Cliente</dt><dd>{{ p.cliente_codigo }} {{ p.cliente_nome }}{% if p.cliente_provisorio %} <span class="selo atencao">identificar</span>{% endif %}</dd>
+      <dt>Caso</dt><dd>{{ p.caso_codigo }} {{ p.caso_titulo }}</dd>
+      <dt>Processo</dt><dd>{{ p.processo_tribunal }}{% if p.grau %}, {{ p.grau }}º grau{% endif %}{% if p.comarca %}, comarca de {{ p.comarca }}{% endif %}{% if p.sistema %}, {{ p.sistema }}{% endif %}</dd>
+    {% else %}
+      <dt>Processo</dt><dd><span class="selo alerta">não cadastrado</span> o prazo só pode ser aprovado depois do cadastro</dd>
+    {% endif %}
+    {% if p.link %}<dt>Documento</dt><dd><a href="{{ p.link }}" target="_blank" rel="noopener noreferrer">abrir no sistema do tribunal</a></dd>{% endif %}
+  </dl>
+</div>
+
+<h2>Teor da publicação</h2>
+<div class="texto">{{ p.texto }}</div>
+
+{% if aprovado %}
+<h2>Prazo aprovado</h2>
+<div class="cartao">
+  <div class="datas">
+    <div class="data"><span>Publicação</span><b>{{ aprovado.data_publicacao | data }}</b></div>
+    <div class="data"><span>Início da contagem</span><b>{{ aprovado.data_inicio | data }}</b></div>
+    <div class="data principal"><span>Vencimento (controle)</span><b>{{ aprovado.data_fatal | data }}</b></div>
+    <div class="data"><span>Prazo interno</span><b>{{ aprovado.data_interna | data }}</b></div>
+  </div>
+  {% if not aprovado.calendario_conferido %}<div class="aviso alerta">Aprovado com calendário ou local da contagem não conferido: conferir a contagem.</div>{% endif %}
+  <p>Tarefa: {{ aprovado.tarefa_titulo }} ({{ aprovado.tarefa_situacao | replace("_", " ") }}).</p>
+</div>
+{% endif %}
+
+{% if pendente %}
+<h2>Prazo</h2>
+<form class="cartao" method="post" action="/caixa/{{ p.id }}/calcular">
+  <label for="prazo_legal_id">Ato, pela tabela de prazos legais</label>
+  <select id="prazo_legal_id" name="prazo_legal_id">
+    <option value="">Escolha</option>
+    {% for pl in prazos_legais %}
+    <option value="{{ pl.id }}" {% if pedido.prazo_legal_id == pl.id %}selected{% endif %}>{{ pl.tipo_ato | ato }}: {{ pl.dias }} dias {{ "úteis" if pl.contagem == "uteis" else "corridos" }} ({{ pl.dispositivo }}){% if pl.termo != "publicacao" %}, termo diverso da publicação{% endif %}</option>
+    {% endfor %}
+  </select>
+  <p class="linha">Ou, fora da tabela, informe os dias (o prazo sai marcado para conferência):</p>
+  <input name="dias" type="number" min="1" max="365" value="{{ pedido.dias or '' }}" aria-label="Dias úteis" placeholder="dias úteis">
+  <label><input type="checkbox" name="em_dobro" value="1" {% if pedido.em_dobro %}checked{% endif %}> Prazo em dobro</label>
+  <div class="acoes"><button type="submit">Calcular</button></div>
+</form>
+
+{% if simulacao %}
+{% set r = simulacao.resultado %}
+<div class="cartao">
+  {% if simulacao.confiavel %}
+  <div class="aviso ok">Calendário conferido para {{ simulacao.tribunal }}{% if simulacao.comarca %} / {{ simulacao.comarca }}{% endif %} no período.</div>
+  {% endif %}
+  {% if simulacao.alertas %}
+  <div class="aviso {{ 'atencao' if simulacao.confiavel else 'alerta' }}">
+    <b>{{ "Atenção" if simulacao.confiavel else "Cálculo não confiável até a conferência" }}</b>
+    <ul>{% for a in simulacao.alertas %}<li>{{ a }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  <p class="linha">Contagem pelo calendário de {{ simulacao.tribunal }}{% if simulacao.comarca %}, comarca de {{ simulacao.comarca }}{% endif %}{% if simulacao.prazo_legal %}; {{ simulacao.prazo_legal.dispositivo }}{% endif %}.</p>
+  <div class="datas">
+    <div class="data"><span>Publicação</span><b>{{ r.publicacao | data }}</b></div>
+    <div class="data"><span>Início da contagem</span><b>{{ r.inicio | data }}</b></div>
+    <div class="data principal"><span>Vencimento (controle)</span><b>{{ r.vencimento_sem_prorrogacao | data }}</b></div>
+    {% if r.vencimento != r.vencimento_sem_prorrogacao %}<div class="data"><span>Com prorrogação</span><b>{{ r.vencimento | data }}</b></div>{% endif %}
+    <div class="data"><span>Prazo interno</span><b>{{ r.prazo_interno | data }}</b></div>
+  </div>
+  <details><summary>Memória de cálculo</summary>
+    <ol class="memoria">{% for linha in r.memoria %}<li>{{ linha }}</li>{% endfor %}</ol>
+  </details>
+
+  {% if p.processo_id %}
+  <form method="post" action="/caixa/{{ p.id }}/aprovar">
+    <input type="hidden" name="prazo_legal_id" value="{{ pedido.prazo_legal_id or '' }}">
+    <input type="hidden" name="dias" value="{{ pedido.dias or '' }}">
+    <input type="hidden" name="em_dobro" value="{{ '1' if pedido.em_dobro else '' }}">
+    <label for="providencia">Providência (título da tarefa, opcional)</label>
+    <input id="providencia" name="providencia" style="width: 100%" value="{{ pedido.providencia or '' }}">
+    <div class="acoes"><button type="submit">Aprovar prazo e criar tarefa</button></div>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+<h2>Sem providência</h2>
+<form class="cartao" method="post" action="/caixa/{{ p.id }}/arquivar">
+  <label for="motivo">Motivo (opcional)</label>
+  <textarea id="motivo" name="motivo" rows="2" style="width: 100%"></textarea>
+  <div class="acoes"><button class="discreto" type="submit">Arquivar sem providência</button></div>
+</form>
+{% endif %}
+{% endblock %}
