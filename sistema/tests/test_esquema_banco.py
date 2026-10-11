@@ -188,7 +188,7 @@ def test_todos_os_objetos_ficam_no_esquema_sgj_com_rls(banco, base):
     ).fetchone()[0]
     assert sem_rls == 0
     total = banco.execute("SELECT count(*) FROM pg_tables WHERE schemaname = 'sgj'").fetchone()[0]
-    assert total == 32
+    assert total == 34
 
 
 def test_papel_sem_privilegio_nao_le_o_esquema(banco, base):
