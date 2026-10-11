@@ -1,13 +1,17 @@
--- Esquema inicial do sistema de gestão jurídica (plano, Seção 15).
--- PostgreSQL 16 com a extensão pgvector.
+-- Esquema inicial do sistema de gestão jurídica (plano, Seções 15 e 23.1).
+-- PostgreSQL 16 ou superior, com a extensão pgvector.
+-- Todos os objetos ficam no esquema próprio `sgj`, sem tocar em `public`,
+-- `iris` ou `djen` do projeto Supabase existente.
 
 BEGIN;
 
-CREATE EXTENSION IF NOT EXISTS vector;
+CREATE SCHEMA IF NOT EXISTS sgj;
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
 
 -- Usuários e regras de trabalho
 
-CREATE TABLE usuarios (
+CREATE TABLE sgj.usuarios (
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nome        text NOT NULL,
     email       text NOT NULL UNIQUE,
@@ -18,7 +22,7 @@ CREATE TABLE usuarios (
 
 -- Clientes, casos e contratos
 
-CREATE TABLE clientes (
+CREATE TABLE sgj.clientes (
     id                   bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     codigo               text NOT NULL UNIQUE CHECK (codigo ~ '^C[0-9]{4,}$'),
     tipo                 text NOT NULL CHECK (tipo IN ('PF', 'PJ')),
@@ -31,10 +35,10 @@ CREATE TABLE clientes (
     criado_em            timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE casos (
+CREATE TABLE sgj.casos (
     id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     codigo          text NOT NULL UNIQUE CHECK (codigo ~ '^K[0-9]{4,}$'),
-    cliente_id      bigint NOT NULL REFERENCES clientes(id),
+    cliente_id      bigint NOT NULL REFERENCES sgj.clientes(id),
     titulo          text NOT NULL,
     area            text,
     situacao        text NOT NULL DEFAULT 'ativo' CHECK (situacao IN ('ativo', 'suspenso', 'encerrado')),
@@ -42,9 +46,9 @@ CREATE TABLE casos (
     criado_em       timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE contratos_honorarios (
+CREATE TABLE sgj.contratos_honorarios (
     id                  bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    caso_id             bigint NOT NULL REFERENCES casos(id),
+    caso_id             bigint NOT NULL REFERENCES sgj.casos(id),
     modalidade          text NOT NULL CHECK (modalidade IN ('fixo', 'parcelado', 'mensal', 'exito', 'misto')),
     valores             jsonb NOT NULL DEFAULT '{}'::jsonb,
     percentual_exito    numeric(5, 2) CHECK (percentual_exito BETWEEN 0 AND 100),
@@ -55,9 +59,9 @@ CREATE TABLE contratos_honorarios (
 
 -- Processos
 
-CREATE TABLE processos (
+CREATE TABLE sgj.processos (
     id                   bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    caso_id              bigint NOT NULL REFERENCES casos(id),
+    caso_id              bigint NOT NULL REFERENCES sgj.casos(id),
     npu                  text NOT NULL UNIQUE CHECK (npu ~ '^[0-9]{20}$'),
     tribunal             text NOT NULL,
     comarca              text,
@@ -71,12 +75,12 @@ CREATE TABLE processos (
     ultima_sincronizacao timestamptz,
     criado_em            timestamptz NOT NULL DEFAULT now()
 );
-COMMENT ON COLUMN processos.npu IS 'Numeração única sem máscara (20 dígitos).';
-COMMENT ON COLUMN processos.sistema IS 'Reverificar periodicamente: TJSP e TJPR mantêm acervo em sistema antigo.';
+COMMENT ON COLUMN sgj.processos.npu IS 'Numeração única sem máscara (20 dígitos).';
+COMMENT ON COLUMN sgj.processos.sistema IS 'Reverificar periodicamente: TJSP e TJPR mantêm acervo em sistema antigo.';
 
-CREATE TABLE partes (
+CREATE TABLE sgj.partes (
     id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    processo_id  bigint NOT NULL REFERENCES processos(id) ON DELETE CASCADE,
+    processo_id  bigint NOT NULL REFERENCES sgj.processos(id) ON DELETE CASCADE,
     nome         text NOT NULL,
     polo         text NOT NULL CHECK (polo IN ('ativo', 'passivo', 'terceiro')),
     advogados    jsonb NOT NULL DEFAULT '[]'::jsonb
@@ -84,7 +88,7 @@ CREATE TABLE partes (
 
 -- Coletas, publicações e movimentações
 
-CREATE TABLE coletas (
+CREATE TABLE sgj.coletas (
     id        bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     fonte     text NOT NULL,
     inicio    timestamptz NOT NULL DEFAULT now(),
@@ -93,11 +97,11 @@ CREATE TABLE coletas (
     itens     integer NOT NULL DEFAULT 0,
     erro      text
 );
-COMMENT ON COLUMN coletas.fonte IS 'djen, datajud ou robo:<sistema>:<tribunal>.';
+COMMENT ON COLUMN sgj.coletas.fonte IS 'djen, datajud ou robo:<sistema>:<tribunal>.';
 
-CREATE TABLE publicacoes (
+CREATE TABLE sgj.publicacoes (
     id                     bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    processo_id            bigint REFERENCES processos(id),
+    processo_id            bigint REFERENCES sgj.processos(id),
     npu                    text NOT NULL,
     origem                 text NOT NULL DEFAULT 'djen' CHECK (origem = 'djen'),
     hash                   text NOT NULL UNIQUE,
@@ -108,28 +112,28 @@ CREATE TABLE publicacoes (
     certidao_drive_id      text,
     situacao_triagem       text NOT NULL DEFAULT 'capturada'
                            CHECK (situacao_triagem IN ('capturada', 'triada', 'aprovada', 'arquivada')),
-    coleta_id              bigint REFERENCES coletas(id),
+    coleta_id              bigint REFERENCES sgj.coletas(id),
     capturada_em           timestamptz NOT NULL DEFAULT now()
 );
-COMMENT ON COLUMN publicacoes.processo_id IS 'Nulo enquanto o processo não estiver cadastrado (fila de processos não identificados).';
+COMMENT ON COLUMN sgj.publicacoes.processo_id IS 'Nulo enquanto o processo não estiver cadastrado (fila de processos não identificados).';
 
-CREATE TABLE movimentacoes (
+CREATE TABLE sgj.movimentacoes (
     id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    processo_id  bigint NOT NULL REFERENCES processos(id),
+    processo_id  bigint NOT NULL REFERENCES sgj.processos(id),
     origem       text NOT NULL CHECK (origem IN ('datajud', 'robo')),
     data_hora    timestamptz NOT NULL,
     codigo       text,
     descricao    text NOT NULL,
-    coleta_id    bigint REFERENCES coletas(id),
+    coleta_id    bigint REFERENCES sgj.coletas(id),
     UNIQUE (processo_id, origem, data_hora, codigo, descricao)
 );
 
 -- Documentos e índice semântico
 
-CREATE TABLE documentos (
+CREATE TABLE sgj.documentos (
     id               bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    processo_id      bigint REFERENCES processos(id),
-    caso_id          bigint REFERENCES casos(id),
+    processo_id      bigint REFERENCES sgj.processos(id),
+    caso_id          bigint REFERENCES sgj.casos(id),
     origem           text NOT NULL CHECK (origem IN ('robo', 'dashboard', 'drive', 'iris', 'gerador')),
     evento           text,
     tipo             text,
@@ -142,20 +146,20 @@ CREATE TABLE documentos (
     CHECK (processo_id IS NOT NULL OR caso_id IS NOT NULL)
 );
 
-CREATE TABLE documentos_trechos (
+CREATE TABLE sgj.documentos_trechos (
     id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    documento_id  bigint NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
+    documento_id  bigint NOT NULL REFERENCES sgj.documentos(id) ON DELETE CASCADE,
     ordem         integer NOT NULL,
     texto         text NOT NULL,
-    embedding     vector,
+    embedding     extensions.vector,
     UNIQUE (documento_id, ordem)
 );
-COMMENT ON COLUMN documentos_trechos.embedding IS
+COMMENT ON COLUMN sgj.documentos_trechos.embedding IS
     'Gerado por modelo local (plano, Seção 13.3). Fixar a dimensão e criar o índice após a escolha do modelo.';
 
 -- Prazos legais, calendário e prazos
 
-CREATE TABLE prazos_legais (
+CREATE TABLE sgj.prazos_legais (
     id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     tipo_ato       text NOT NULL UNIQUE,
     dias           integer NOT NULL CHECK (dias > 0),
@@ -163,10 +167,10 @@ CREATE TABLE prazos_legais (
     dispositivo    text NOT NULL,
     link_oficial   text NOT NULL,
     conferido_em   date NOT NULL,
-    conferido_por  bigint NOT NULL REFERENCES usuarios(id)
+    conferido_por  bigint NOT NULL REFERENCES sgj.usuarios(id)
 );
 
-CREATE TABLE calendario (
+CREATE TABLE sgj.calendario (
     id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     tribunal     text NOT NULL,
     comarca      text,
@@ -175,29 +179,29 @@ CREATE TABLE calendario (
     descricao    text NOT NULL,
     fonte_link   text NOT NULL CHECK (length(trim(fonte_link)) > 0),
     incluido_em  timestamptz NOT NULL DEFAULT now(),
-    incluido_por bigint REFERENCES usuarios(id),
+    incluido_por bigint REFERENCES sgj.usuarios(id),
     CHECK (tribunal <> '*' OR comarca IS NULL)
 );
-CREATE INDEX calendario_busca ON calendario (tribunal, data);
+CREATE INDEX calendario_busca ON sgj.calendario (tribunal, data);
 
-CREATE TABLE calendario_cobertura (
+CREATE TABLE sgj.calendario_cobertura (
     tribunal       text NOT NULL,
     comarca        text NOT NULL DEFAULT '',
     ano            integer NOT NULL,
-    conferido_por  bigint NOT NULL REFERENCES usuarios(id),
+    conferido_por  bigint NOT NULL REFERENCES sgj.usuarios(id),
     conferido_em   date NOT NULL,
     PRIMARY KEY (tribunal, comarca, ano)
 );
-COMMENT ON COLUMN calendario_cobertura.comarca IS 'Vazio para o tribunal sem feriados municipais (ex.: 2º grau).';
+COMMENT ON COLUMN sgj.calendario_cobertura.comarca IS 'Vazio para o tribunal sem feriados municipais (ex.: 2º grau).';
 
-CREATE TABLE sugestoes_ia (
+CREATE TABLE sgj.sugestoes_ia (
     id                bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    publicacao_id     bigint REFERENCES publicacoes(id),
-    movimentacao_id   bigint REFERENCES movimentacoes(id),
+    publicacao_id     bigint REFERENCES sgj.publicacoes(id),
+    movimentacao_id   bigint REFERENCES sgj.movimentacoes(id),
     tipo_ato          text,
     resumo            text,
     providencia       text,
-    prazo_legal_id    bigint REFERENCES prazos_legais(id),
+    prazo_legal_id    bigint REFERENCES sgj.prazos_legais(id),
     modelo_sugerido   text,
     confianca         numeric(3, 2) CHECK (confianca BETWEEN 0 AND 1),
     modelo_ia         text NOT NULL,
@@ -206,13 +210,13 @@ CREATE TABLE sugestoes_ia (
     CHECK ((publicacao_id IS NULL) <> (movimentacao_id IS NULL)),
     CHECK (movimentacao_id IS NULL OR prazo_legal_id IS NULL)
 );
-COMMENT ON TABLE sugestoes_ia IS 'Movimentação sem publicação não recebe prazo legal (plano, Seções 5.4 e 6.2).';
+COMMENT ON TABLE sgj.sugestoes_ia IS 'Movimentação sem publicação não recebe prazo legal (plano, Seções 5.4 e 6.2).';
 
-CREATE TABLE prazos (
+CREATE TABLE sgj.prazos (
     id                          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    processo_id                 bigint NOT NULL REFERENCES processos(id),
-    publicacao_id               bigint NOT NULL REFERENCES publicacoes(id),
-    prazo_legal_id              bigint REFERENCES prazos_legais(id),
+    processo_id                 bigint NOT NULL REFERENCES sgj.processos(id),
+    publicacao_id               bigint NOT NULL REFERENCES sgj.publicacoes(id),
+    prazo_legal_id              bigint REFERENCES sgj.prazos_legais(id),
     dias                        integer NOT NULL CHECK (dias > 0),
     multiplicador               smallint NOT NULL DEFAULT 1 CHECK (multiplicador IN (1, 2)),
     data_publicacao             date NOT NULL,
@@ -224,7 +228,7 @@ CREATE TABLE prazos (
     memoria_calculo             jsonb NOT NULL,
     situacao                    text NOT NULL DEFAULT 'sugerido'
                                 CHECK (situacao IN ('sugerido', 'confirmado', 'cumprido', 'cancelado')),
-    aprovado_por                bigint REFERENCES usuarios(id),
+    aprovado_por                bigint REFERENCES sgj.usuarios(id),
     aprovado_em                 timestamptz,
     CHECK (data_inicio > data_publicacao),
     CHECK (data_fatal >= data_inicio),
@@ -232,29 +236,29 @@ CREATE TABLE prazos (
     CHECK (data_interna <= data_fatal),
     CHECK (situacao = 'sugerido' OR (aprovado_por IS NOT NULL AND aprovado_em IS NOT NULL))
 );
-COMMENT ON COLUMN prazos.data_fatal IS 'Data de controle, sem prorrogação por indisponibilidade (motor de prazos).';
+COMMENT ON COLUMN sgj.prazos.data_fatal IS 'Data de controle, sem prorrogação por indisponibilidade (motor de prazos).';
 
 -- Tarefas, minutas e protocolos
 
-CREATE TABLE regras_distribuicao (
+CREATE TABLE sgj.regras_distribuicao (
     id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     tipo_ato     text,
     tribunal     text,
-    cliente_id   bigint REFERENCES clientes(id),
-    responsavel  bigint NOT NULL REFERENCES usuarios(id),
-    revisor      bigint NOT NULL REFERENCES usuarios(id)
+    cliente_id   bigint REFERENCES sgj.clientes(id),
+    responsavel  bigint NOT NULL REFERENCES sgj.usuarios(id),
+    revisor      bigint NOT NULL REFERENCES sgj.usuarios(id)
 );
 
-CREATE TABLE tarefas (
+CREATE TABLE sgj.tarefas (
     id                  bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    processo_id         bigint REFERENCES processos(id),
-    cliente_id          bigint REFERENCES clientes(id),
-    prazo_id            bigint REFERENCES prazos(id),
+    processo_id         bigint REFERENCES sgj.processos(id),
+    cliente_id          bigint REFERENCES sgj.clientes(id),
+    prazo_id            bigint REFERENCES sgj.prazos(id),
     origem              text NOT NULL CHECK (origem IN ('publicacao', 'movimentacao', 'financeiro', 'atendimento', 'manual')),
     tipo                text NOT NULL CHECK (tipo IN ('prazo_processual', 'interna')),
     titulo              text NOT NULL,
-    responsavel         bigint REFERENCES usuarios(id),
-    revisor             bigint REFERENCES usuarios(id),
+    responsavel         bigint REFERENCES sgj.usuarios(id),
+    revisor             bigint REFERENCES sgj.usuarios(id),
     situacao            text NOT NULL DEFAULT 'a_fazer'
                         CHECK (situacao IN ('a_fazer', 'em_elaboracao', 'conferencia_1', 'pronta_protocolo',
                                             'conferencia_2', 'protocolada', 'concluida', 'cancelada')),
@@ -264,9 +268,9 @@ CREATE TABLE tarefas (
     CHECK (processo_id IS NOT NULL OR cliente_id IS NOT NULL),
     CHECK ((tipo = 'prazo_processual') = (prazo_id IS NOT NULL))
 );
-CREATE INDEX tarefas_painel ON tarefas (situacao, vencimento_interno);
+CREATE INDEX tarefas_painel ON sgj.tarefas (situacao, vencimento_interno);
 
-CREATE TABLE modelos_peticao (
+CREATE TABLE sgj.modelos_peticao (
     id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     tipo           text NOT NULL,
     rito           text,
@@ -276,34 +280,34 @@ CREATE TABLE modelos_peticao (
     UNIQUE (tipo, rito, versao)
 );
 
-CREATE TABLE referencias_conferidas (
+CREATE TABLE sgj.referencias_conferidas (
     id               bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     tipo             text NOT NULL CHECK (tipo IN ('sumula', 'tema', 'precedente', 'lei', 'doutrina')),
     identificacao    text NOT NULL UNIQUE,
     ementa_trecho    text NOT NULL,
     link_oficial     text NOT NULL,
     conferido_em     date NOT NULL,
-    conferido_por    bigint NOT NULL REFERENCES usuarios(id)
+    conferido_por    bigint NOT NULL REFERENCES sgj.usuarios(id)
 );
 
-CREATE TABLE minutas (
+CREATE TABLE sgj.minutas (
     id                   bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    tarefa_id            bigint NOT NULL REFERENCES tarefas(id),
-    modelo_id            bigint REFERENCES modelos_peticao(id),
+    tarefa_id            bigint NOT NULL REFERENCES sgj.tarefas(id),
+    modelo_id            bigint REFERENCES sgj.modelos_peticao(id),
     versao               integer NOT NULL DEFAULT 1,
     docx_drive_id        text NOT NULL,
     pdf_drive_id         text,
     pendencias_conferir  integer NOT NULL DEFAULT 0 CHECK (pendencias_conferir >= 0),
-    aprovado_por         bigint REFERENCES usuarios(id),
+    aprovado_por         bigint REFERENCES sgj.usuarios(id),
     aprovado_em          timestamptz,
     UNIQUE (tarefa_id, versao),
     CONSTRAINT minuta_aprovada_sem_pendencias CHECK (aprovado_em IS NULL OR pendencias_conferir = 0)
 );
-COMMENT ON CONSTRAINT minuta_aprovada_sem_pendencias ON minutas IS 'Minuta com [CONFERIR] pendente não pode ser aprovada (plano, Seção 9.3).';
+COMMENT ON CONSTRAINT minuta_aprovada_sem_pendencias ON sgj.minutas IS 'Minuta com [CONFERIR] pendente não pode ser aprovada (plano, Seção 9.3).';
 
-CREATE TABLE protocolos (
+CREATE TABLE sgj.protocolos (
     id                    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    minuta_id             bigint NOT NULL REFERENCES minutas(id),
+    minuta_id             bigint NOT NULL REFERENCES sgj.minutas(id),
     tribunal              text NOT NULL,
     nivel                 smallint NOT NULL CHECK (nivel IN (1, 2, 3)),
     situacao              text NOT NULL DEFAULT 'preparado' CHECK (situacao IN ('preparado', 'conferido', 'protocolado')),
@@ -312,18 +316,18 @@ CREATE TABLE protocolos (
     protocolado_em        timestamptz,
     CHECK (situacao <> 'protocolado' OR protocolado_em IS NOT NULL)
 );
-COMMENT ON TABLE protocolos IS 'O protocolo é sempre ato manual do advogado; o sistema só prepara (plano, Seção 8.5).';
+COMMENT ON TABLE sgj.protocolos IS 'O protocolo é sempre ato manual do advogado; o sistema só prepara (plano, Seção 8.5).';
 
-CREATE TABLE audiencias (
+CREATE TABLE sgj.audiencias (
     id               bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    processo_id      bigint NOT NULL REFERENCES processos(id),
+    processo_id      bigint NOT NULL REFERENCES sgj.processos(id),
     data_hora        timestamptz NOT NULL,
     tipo             text NOT NULL,
     local_ou_link    text,
     google_event_id  text UNIQUE
 );
 
-CREATE TABLE sessoes_tribunal (
+CREATE TABLE sgj.sessoes_tribunal (
     id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     sistema       text NOT NULL,
     tribunal      text NOT NULL,
@@ -332,24 +336,24 @@ CREATE TABLE sessoes_tribunal (
     expira_em     timestamptz,
     UNIQUE (sistema, tribunal)
 );
-COMMENT ON TABLE sessoes_tribunal IS 'Sem senhas nem segredos de segundo fator (plano, Seção 17.1).';
+COMMENT ON TABLE sgj.sessoes_tribunal IS 'Sem senhas nem segredos de segundo fator (plano, Seção 17.1).';
 
 -- Financeiro
 
-CREATE TABLE cobrancas (
+CREATE TABLE sgj.cobrancas (
     id                bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    contrato_id       bigint NOT NULL REFERENCES contratos_honorarios(id),
+    contrato_id       bigint NOT NULL REFERENCES sgj.contratos_honorarios(id),
     asaas_payment_id  text UNIQUE,
     vencimento        date NOT NULL,
     valor             numeric(12, 2) NOT NULL CHECK (valor > 0),
     situacao          text NOT NULL DEFAULT 'preparada'
                       CHECK (situacao IN ('preparada', 'emitida', 'confirmada', 'recebida', 'vencida', 'cancelada')),
     boleto_drive_id   text,
-    aprovada_por      bigint REFERENCES usuarios(id),
+    aprovada_por      bigint REFERENCES sgj.usuarios(id),
     CHECK (situacao IN ('preparada', 'cancelada') OR aprovada_por IS NOT NULL)
 );
 
-CREATE TABLE eventos_webhook (
+CREATE TABLE sgj.eventos_webhook (
     id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     origem       text NOT NULL CHECK (origem IN ('asaas', 'chatwoot', 'google')),
     id_externo   text NOT NULL,
@@ -359,50 +363,50 @@ CREATE TABLE eventos_webhook (
     processado   boolean NOT NULL DEFAULT false,
     UNIQUE (origem, id_externo)
 );
-COMMENT ON TABLE eventos_webhook IS 'Deduplicação para processamento idempotente (plano, Seção 11.2).';
+COMMENT ON TABLE sgj.eventos_webhook IS 'Deduplicação para processamento idempotente (plano, Seção 11.2).';
 
 -- Atendimento e envios
 
-CREATE TABLE resumos_cliente (
+CREATE TABLE sgj.resumos_cliente (
     id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    processo_id   bigint NOT NULL REFERENCES processos(id),
+    processo_id   bigint NOT NULL REFERENCES sgj.processos(id),
     texto         text NOT NULL,
-    aprovado_por  bigint REFERENCES usuarios(id),
+    aprovado_por  bigint REFERENCES sgj.usuarios(id),
     aprovado_em   timestamptz,
     enviado_em    timestamptz,
     CHECK (enviado_em IS NULL OR aprovado_em IS NOT NULL)
 );
 
-CREATE TABLE modelos_mensagem (
+CREATE TABLE sgj.modelos_mensagem (
     id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     canal         text NOT NULL CHECK (canal IN ('whatsapp', 'email')),
     finalidade    text NOT NULL,
     texto         text NOT NULL,
-    aprovado_por  bigint REFERENCES usuarios(id),
+    aprovado_por  bigint REFERENCES sgj.usuarios(id),
     aprovado_em   timestamptz,
     revogado_em   timestamptz
 );
-COMMENT ON TABLE modelos_mensagem IS 'Mensagens padronizadas, categoria (b) da Seção 17.3 do plano.';
+COMMENT ON TABLE sgj.modelos_mensagem IS 'Mensagens padronizadas, categoria (b) da Seção 17.3 do plano.';
 
-CREATE TABLE envios (
+CREATE TABLE sgj.envios (
     id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     canal           text NOT NULL CHECK (canal IN ('email', 'whatsapp')),
     destinatario    text NOT NULL,
     conteudo        text NOT NULL,
     anexos          jsonb NOT NULL DEFAULT '[]'::jsonb,
     relatorio_pie   jsonb NOT NULL,
-    autorizado_por  bigint REFERENCES usuarios(id),
+    autorizado_por  bigint REFERENCES sgj.usuarios(id),
     autorizado_em   timestamptz,
     enviado_em      timestamptz,
     CHECK (enviado_em IS NULL OR (autorizado_por IS NOT NULL AND autorizado_em IS NOT NULL))
 );
-COMMENT ON TABLE envios IS 'Envios individuais, categoria (a) da Seção 17.3: nenhum sai sem autorização registrada.';
+COMMENT ON TABLE sgj.envios IS 'Envios individuais, categoria (a) da Seção 17.3: nenhum sai sem autorização registrada.';
 
 -- Auditoria
 
-CREATE TABLE auditoria (
+CREATE TABLE sgj.auditoria (
     id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    usuario_id   bigint REFERENCES usuarios(id),
+    usuario_id   bigint REFERENCES sgj.usuarios(id),
     acao         text NOT NULL,
     entidade     text NOT NULL,
     entidade_id  bigint,
@@ -411,14 +415,41 @@ CREATE TABLE auditoria (
     data_hora    timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE FUNCTION auditoria_imutavel() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION sgj.auditoria_imutavel() RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS $$
 BEGIN
     RAISE EXCEPTION 'A trilha de auditoria é imutável (plano, Seção 17.2).';
 END;
 $$;
 
 CREATE TRIGGER auditoria_sem_alteracao
-    BEFORE UPDATE OR DELETE ON auditoria
-    FOR EACH ROW EXECUTE FUNCTION auditoria_imutavel();
+    BEFORE UPDATE OR DELETE ON sgj.auditoria
+    FOR EACH ROW EXECUTE FUNCTION sgj.auditoria_imutavel();
+
+-- Proteção de acesso: segurança por linha em todas as tabelas (sem políticas,
+-- ninguém além do proprietário e de papéis com BYPASSRLS lê ou grava) e
+-- nenhum privilégio para os papéis públicos da API do Supabase.
+
+DO $$
+DECLARE t record;
+BEGIN
+    FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'sgj' LOOP
+        EXECUTE format('ALTER TABLE sgj.%I ENABLE ROW LEVEL SECURITY', t.tablename);
+    END LOOP;
+END $$;
+
+REVOKE ALL ON SCHEMA sgj FROM PUBLIC;
+
+DO $$
+DECLARE r text;
+BEGIN
+    FOREACH r IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+            EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA sgj FROM %I', r);
+            EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA sgj FROM %I', r);
+            EXECUTE format('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA sgj FROM %I', r);
+            EXECUTE format('REVOKE ALL ON SCHEMA sgj FROM %I', r);
+        END IF;
+    END LOOP;
+END $$;
 
 COMMIT;

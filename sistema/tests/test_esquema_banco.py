@@ -33,10 +33,14 @@ def banco():
     dsn_banco = make_conninfo(DSN, dbname=nome)
     sql = MIGRACAO.read_text(encoding="utf-8")
     if not tem_pgvector:
-        sql = sql.replace("CREATE EXTENSION IF NOT EXISTS vector;", "CREATE DOMAIN vector AS real[];")
+        sql = sql.replace(
+            "CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;",
+            "CREATE DOMAIN extensions.vector AS real[];",
+        )
     try:
         with psycopg.connect(dsn_banco, autocommit=True) as conexao:
             conexao.execute(sql)
+            conexao.execute("SET search_path TO sgj, public")
             yield conexao
     finally:
         with psycopg.connect(DSN, autocommit=True) as admin:
@@ -181,3 +185,26 @@ def test_auditoria_e_imutavel(banco, base):
     ).fetchone()[0]
     rejeita(banco, "UPDATE auditoria SET acao = 'alterada' WHERE id = %s", (registro,))
     rejeita(banco, "DELETE FROM auditoria WHERE id = %s", (registro,))
+
+
+def test_todos_os_objetos_ficam_no_esquema_sgj_com_rls(banco, base):
+    fora = banco.execute(
+        "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'"
+    ).fetchone()[0]
+    assert fora == 0
+    sem_rls = banco.execute(
+        "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+        "WHERE n.nspname = 'sgj' AND c.relkind = 'r' AND NOT c.relrowsecurity"
+    ).fetchone()[0]
+    assert sem_rls == 0
+    total = banco.execute("SELECT count(*) FROM pg_tables WHERE schemaname = 'sgj'").fetchone()[0]
+    assert total == 30
+
+
+def test_papel_sem_privilegio_nao_le_o_esquema(banco, base):
+    banco.execute("DROP ROLE IF EXISTS leitor_teste")
+    banco.execute("CREATE ROLE leitor_teste")
+    try:
+        rejeita(banco, "SET LOCAL ROLE leitor_teste; SELECT * FROM sgj.usuarios")
+    finally:
+        banco.execute("DROP ROLE IF EXISTS leitor_teste")
