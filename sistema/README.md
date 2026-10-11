@@ -20,7 +20,7 @@ Regras de projeto:
 - **Falha segura.** Cálculo que atravesse ano sem cobertura conferida para o tribunal e a comarca sai marcado como não confiável, com alerta.
 - **Data de controle conservadora.** O vencimento sem prorrogação por indisponibilidade é a data de controle; a data prorrogada aparece como informação.
 - **Sem presunção de regra.** Contagem em dias corridos é recusada até que o titular defina a regra.
-- **Memória de cálculo.** Cada resultado traz a sequência de datas, os dias excluídos com o motivo e a fonte, e os fundamentos aplicados. Os fundamentos legais estão em constantes no início de `motor.py`, rotulados [CONFERIR] até a leitura integral prevista na Fase 0.
+- **Memória de cálculo.** Cada resultado traz a sequência de datas, os dias excluídos com o motivo e a fonte, e os fundamentos aplicados. Os fundamentos legais estão em constantes no início de `motor.py`, conferidos em 10/10/2026 no texto integral das páginas oficiais, com os links em `FONTES`.
 
 ```python
 from datetime import date
@@ -34,6 +34,8 @@ r.data_controle, r.prazo_interno, r.alertas, r.memoria
 ```
 
 ## Banco de dados
+
+Implantado em 11/10/2026 no esquema `sgj` do Supabase de produção (São Paulo), ao lado dos esquemas existentes; ver [`docs/implantacao-supabase.md`](../docs/implantacao-supabase.md).
 
 PostgreSQL 16 com pgvector. Além das tabelas da Seção 15 do plano, a migração codifica regras do plano como restrições, verificadas em teste:
 

@@ -3,10 +3,10 @@
 | Item | Conteúdo |
 |---|---|
 | Titular | Samuel Guimarães, OAB/RS 107.046 |
-| Versão | 1.3 (ver Seções 22 e 23) |
+| Versão | 1.4 (ver Seções 22 e 23) |
 | Data | 10/10/2026 |
 | Escopo | Sistema independente de gestão jurídica, com agente de IA (OpenAI/ChatGPT), Google Drive, Gmail, robôs de navegação nos sistemas dos tribunais, DJEN, DataJud, Asaas, Chatwoot e atendente virtual Iris |
-| Situação | Em implementação: motor de prazos, esquema do banco e material da Fase 0 entregues em [`sistema/`](../sistema/) e [`docs/fase0/`](fase0/); APIs do DJEN e do DataJud verificadas em chamadas reais; recomendações aceitas pelo titular em 10/10/2026 (Seção 23) |
+| Situação | Em implementação: motor de prazos, esquema do banco e material da Fase 0 entregues em [`sistema/`](../sistema/) e [`docs/fase0/`](fase0/); APIs do DJEN e do DataJud verificadas em chamadas reais; recomendações aceitas pelo titular em 10/10/2026 (Seção 23); estrutura do banco implantada no Supabase de produção em 11/10/2026 |
 
 Legenda de rótulos: **[FONTE]** norma ou documentação conferida por leitura integral na fonte oficial (nenhum item desta versão atinge esse grau, pela razão exposta na nota de método); **[CONFERIR]** dado extraído de fonte oficial apenas por trecho indexado, pendente de leitura integral; **[INTERPRETAÇÃO]** leitura técnica; **[HIPÓTESE]** estimativa ou suposição; **[RISCO]** risco operacional ou processual.
 
@@ -863,6 +863,8 @@ Consultas realizadas em 10/10/2026, por buscador restrito a domínios oficiais (
 
 **Versão 1.3 (10/10/2026):** incorporação de verificações com chamadas reais (DJEN, DataJud), das normas conferidas no texto integral, da carteira existente e das decisões aceitas pelo titular (Seção 23); correção da Seção 8.1 quanto ao PJe.
 
+**Versão 1.4 (11/10/2026):** implantação da estrutura do banco no Supabase de produção, no esquema `sgj`, com cópia de segurança prévia e carga dos dados de referência verificados (Seção 23.1).
+
 ---
 
 ## 23. Atualização de 10/10/2026: dados reais e decisões
@@ -871,7 +873,7 @@ Detalhamento técnico e fontes em [`docs/fase0/apis-verificadas.md`](fase0/apis-
 
 ### 23.1 Infraestrutura existente
 
-O titular já mantém um projeto Supabase em São Paulo (PostgreSQL 17, região sa-east-1), com captura diária do DJEN em funcionamento (agendamentos internos às 09h30 e às 16h00 UTC), a base da atendente Iris e um protótipo de gestão com carteira, movimentações e tarefas. **Decisão:** esse projeto passa a ser a base do sistema. O novo núcleo será instalado em esquema próprio, ao lado dos existentes, sem alterar a captura do DJEN nem a Iris. A aplicação da migração em produção será feita em etapa própria, com cópia de segurança prévia.
+O titular já mantém um projeto Supabase em São Paulo (PostgreSQL 17, região sa-east-1), com captura diária do DJEN em funcionamento (agendamentos internos às 09h30 e às 16h00 UTC), a base da atendente Iris e um protótipo de gestão com carteira, movimentações e tarefas. **Decisão:** esse projeto passa a ser a base do sistema. O novo núcleo foi instalado em 11/10/2026 no esquema próprio `sgj`, ao lado dos existentes, sem alterar a captura do DJEN nem a Iris, após cópia de segurança integral das tabelas existentes. Registro, procedimento de reversão e apontamentos de segurança em [`implantacao-supabase.md`](implantacao-supabase.md).
 
 ### 23.2 DJEN
 
