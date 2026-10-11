@@ -7,8 +7,8 @@ Implementação do [plano de implementação](../docs/plano-sistema-gestao-jurid
 | Fase do plano | Entregue neste diretório | Pendente |
 |---|---|---|
 | 0. Preparação | Sondagem das APIs do DJEN e do DataJud (`sgj/sondagem_apis.py`); [lista de conferência e planilhas-modelo](../docs/fase0/) | Liberação de rede, leitura das fontes, teste real das APIs, planilhas preenchidas, decisões do titular |
-| 1. Núcleo e cadastro | Esquema do banco (`sgj/db/migrations/0001_inicial.sql`), com as regras do plano em restrições | API, autenticação, integração com o Drive, dashboard |
-| 2. Publicações, prazos e tarefas | Motor de prazos (`sgj/prazos/`) | Coletores, triagem pela IA, tarefas, notificações |
+| 1. Núcleo e cadastro | Esquema do banco (`sgj/db/migrations/0001_inicial.sql`), com as regras do plano em restrições; importação da carteira do protótipo (`0002_importacao_prototipo.sql`) | Aplicação da importação em produção, API, autenticação, integração com o Drive, dashboard |
+| 2. Publicações, prazos e tarefas | Motor de prazos (`sgj/prazos/`); ligação com a captura do DJEN (`sgj.sincronizar_djen`) | Triagem pela IA, tarefas de prazo, notificações |
 
 ## Motor de prazos
 
@@ -44,7 +44,11 @@ PostgreSQL 16 com pgvector. Além das tabelas da Seção 15 do plano, a migraç�
 - minuta com pendência `[CONFERIR]` não pode ser aprovada;
 - envio individual só sai com autorização registrada; cobrança só é emitida com aprovação;
 - entrada de calendário exige fonte;
-- trilha de auditoria imutável (gatilho impede alteração e exclusão).
+- trilha de auditoria imutável (gatilho impede alteração e exclusão);
+- sistema do processo só é registrado com a fonte da confirmação (DJEN, robô ou titular);
+- tipo de pessoa conforme o CPF ou CNPJ, quando informado.
+
+A migração `0002_importacao_prototipo.sql` traz a importação da carteira do protótipo (`sgj.importar_carteira_prototipo()`) e a ligação com a captura do DJEN já existente no banco (`sgj.sincronizar_djen()`, agendada duas vezes ao dia). Ambas são repetíveis e não alteram as tabelas de origem; regras e resultado esperado em [`docs/implantacao-supabase.md`](../docs/implantacao-supabase.md), Seção 6.
 
 ## Testes
 
@@ -54,7 +58,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-Os testes do banco rodam quando `SGJ_TEST_PG_DSN` aponta para um servidor PostgreSQL (banco administrativo); cada execução cria e remove um banco temporário. Sem pgvector instalado no servidor, o tipo `vector` é substituído por um domínio provisório e o índice semântico fica fora do teste.
+Os testes do banco rodam quando `SGJ_TEST_PG_DSN` aponta para um servidor PostgreSQL (banco administrativo); cada módulo de teste cria e remove um banco temporário com todas as migrações. Os testes da importação recriam as tabelas do protótipo e da captura do DJEN com a estrutura de produção e dados fictícios. Sem pgvector instalado no servidor, o tipo `vector` é substituído por um domínio provisório e o índice semântico fica fora do teste.
 
 ```bash
 pip install "psycopg[binary]>=3.2"

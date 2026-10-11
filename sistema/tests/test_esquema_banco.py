@@ -1,50 +1,16 @@
 """Testes das restrições do esquema contra um PostgreSQL real.
 
-Executados apenas quando SGJ_TEST_PG_DSN aponta para um servidor (banco
-administrativo, ex.: postgresql://postgres@/postgres?host=/caminho&port=54329).
-Cada execução cria e remove um banco temporário. Sem a extensão pgvector no
-servidor, o tipo `vector` é substituído por um domínio provisório, e o
-índice semântico fica fora do teste.
+Executados apenas quando SGJ_TEST_PG_DSN aponta para um servidor; o banco
+temporário, com todas as migrações, vem da fixture `banco` (conftest.py).
 """
 
 import os
-import uuid
-from pathlib import Path
 
 import pytest
 
 psycopg = pytest.importorskip("psycopg")
-from psycopg.conninfo import make_conninfo  # noqa: E402
 
-DSN = os.environ.get("SGJ_TEST_PG_DSN")
-MIGRACAO = Path(__file__).parents[1] / "sgj" / "db" / "migrations" / "0001_inicial.sql"
-
-pytestmark = pytest.mark.skipif(not DSN, reason="SGJ_TEST_PG_DSN não definido")
-
-
-@pytest.fixture(scope="module")
-def banco():
-    nome = f"sgj_teste_{uuid.uuid4().hex[:8]}"
-    with psycopg.connect(DSN, autocommit=True) as admin:
-        admin.execute(f'CREATE DATABASE "{nome}"')
-        tem_pgvector = admin.execute(
-            "SELECT 1 FROM pg_available_extensions WHERE name = 'vector'"
-        ).fetchone()
-    dsn_banco = make_conninfo(DSN, dbname=nome)
-    sql = MIGRACAO.read_text(encoding="utf-8")
-    if not tem_pgvector:
-        sql = sql.replace(
-            "CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;",
-            "CREATE DOMAIN extensions.vector AS real[];",
-        )
-    try:
-        with psycopg.connect(dsn_banco, autocommit=True) as conexao:
-            conexao.execute(sql)
-            conexao.execute("SET search_path TO sgj, public")
-            yield conexao
-    finally:
-        with psycopg.connect(DSN, autocommit=True) as admin:
-            admin.execute(f'DROP DATABASE IF EXISTS "{nome}" WITH (FORCE)')
+pytestmark = pytest.mark.skipif(not os.environ.get("SGJ_TEST_PG_DSN"), reason="SGJ_TEST_PG_DSN não definido")
 
 
 @pytest.fixture(scope="module")
@@ -62,7 +28,8 @@ def base(banco):
         (ids["cliente"],),
     ).fetchone()[0]
     ids["processo"] = banco.execute(
-        "INSERT INTO processos (caso_id, npu, tribunal, sistema) VALUES (%s, '00000000000000000000', 'TJX', 'eproc') RETURNING id",
+        "INSERT INTO processos (caso_id, npu, tribunal, sistema, sistema_fonte) "
+        "VALUES (%s, '00000000000000000000', 'TJX', 'eproc', 'titular') RETURNING id",
         (ids["caso"],),
     ).fetchone()[0]
     ids["publicacao"] = banco.execute(
@@ -187,6 +154,20 @@ def test_auditoria_e_imutavel(banco, base):
     rejeita(banco, "DELETE FROM auditoria WHERE id = %s", (registro,))
 
 
+def test_cliente_sem_documento_e_aceito_e_tipo_segue_o_documento(banco, base):
+    aceita(banco, "INSERT INTO clientes (codigo, nome) VALUES ('C0101', 'Sem documento')")
+    rejeita(banco, "INSERT INTO clientes (codigo, nome, cpf_cnpj) VALUES ('C0102', 'Sem tipo', '00000000001')")
+    rejeita(banco, "INSERT INTO clientes (codigo, tipo, nome, cpf_cnpj) VALUES ('C0103', 'PJ', 'Tipo trocado', '00000000002')")
+    aceita(banco, "INSERT INTO clientes (codigo, tipo, nome, cpf_cnpj) VALUES ('C0104', 'PJ', 'Empresa', '00000000000100')")
+
+
+def test_sistema_do_processo_exige_fonte(banco, base):
+    processo = "INSERT INTO processos (caso_id, npu, tribunal, sistema, sistema_fonte) VALUES (%s, %s, 'TJX', %s, %s)"
+    rejeita(banco, processo, (base["caso"], "00000000000000000001", "eproc", None))
+    rejeita(banco, processo, (base["caso"], "00000000000000000002", None, "djen"))
+    aceita(banco, processo, (base["caso"], "00000000000000000003", None, None))
+
+
 def test_todos_os_objetos_ficam_no_esquema_sgj_com_rls(banco, base):
     fora = banco.execute(
         "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'"
@@ -198,7 +179,7 @@ def test_todos_os_objetos_ficam_no_esquema_sgj_com_rls(banco, base):
     ).fetchone()[0]
     assert sem_rls == 0
     total = banco.execute("SELECT count(*) FROM pg_tables WHERE schemaname = 'sgj'").fetchone()[0]
-    assert total == 30
+    assert total == 31
 
 
 def test_papel_sem_privilegio_nao_le_o_esquema(banco, base):
@@ -206,5 +187,10 @@ def test_papel_sem_privilegio_nao_le_o_esquema(banco, base):
     banco.execute("CREATE ROLE leitor_teste")
     try:
         rejeita(banco, "SET LOCAL ROLE leitor_teste; SELECT * FROM sgj.usuarios")
+        executaveis = banco.execute(
+            "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
+            "WHERE n.nspname = 'sgj' AND has_function_privilege('leitor_teste', p.oid, 'EXECUTE')"
+        ).fetchone()[0]
+        assert executaveis == 0
     finally:
         banco.execute("DROP ROLE IF EXISTS leitor_teste")

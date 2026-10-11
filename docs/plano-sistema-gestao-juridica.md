@@ -3,10 +3,10 @@
 | Item | Conteúdo |
 |---|---|
 | Titular | Samuel Guimarães, OAB/RS 107.046 |
-| Versão | 1.4 (ver Seções 22 e 23) |
+| Versão | 1.5 (ver Seções 22 e 23) |
 | Data | 10/10/2026 |
 | Escopo | Sistema independente de gestão jurídica, com agente de IA (OpenAI/ChatGPT), Google Drive, Gmail, robôs de navegação nos sistemas dos tribunais, DJEN, DataJud, Asaas, Chatwoot e atendente virtual Iris |
-| Situação | Em implementação: motor de prazos, esquema do banco e material da Fase 0 entregues em [`sistema/`](../sistema/) e [`docs/fase0/`](fase0/); APIs do DJEN e do DataJud verificadas em chamadas reais; recomendações aceitas pelo titular em 10/10/2026 (Seção 23); estrutura do banco implantada no Supabase de produção em 11/10/2026 |
+| Situação | Em implementação: motor de prazos, esquema do banco e material da Fase 0 entregues em [`sistema/`](../sistema/) e [`docs/fase0/`](fase0/); APIs do DJEN e do DataJud verificadas em chamadas reais; recomendações aceitas pelo titular em 10/10/2026 (Seção 23); estrutura do banco implantada no Supabase de produção em 11/10/2026; importação da carteira e ligação com a captura do DJEN preparadas e testadas, com aplicação em produção pendente de aprovação do titular |
 
 Legenda de rótulos: **[FONTE]** norma ou documentação conferida por leitura integral na fonte oficial (nenhum item desta versão atinge esse grau, pela razão exposta na nota de método); **[CONFERIR]** dado extraído de fonte oficial apenas por trecho indexado, pendente de leitura integral; **[INTERPRETAÇÃO]** leitura técnica; **[HIPÓTESE]** estimativa ou suposição; **[RISCO]** risco operacional ou processual.
 
@@ -616,18 +616,18 @@ Requisitos de usabilidade: uso em computador e celular; ações de aprovação c
 
 | Tabela | Campos principais |
 |---|---|
-| `clientes` | id, código (C0001), tipo (PF/PJ), nome, cpf_cnpj, contatos, drive_pasta_id, asaas_customer_id, chatwoot_contact_id |
+| `clientes` | id, código (C0001), tipo (PF/PJ), nome, cpf_cnpj (opcional até o preenchimento; Seção 23.4), contatos, drive_pasta_id, asaas_customer_id, chatwoot_contact_id, provisório (reúne casos de cliente não identificado) |
 | `casos` | id, código (K0001), cliente_id, título, área, situação, drive_pasta_id |
 | `contratos_honorarios` | id, caso_id, modalidade, valores, percentual_exito, parcelas, documento_drive_id |
-| `processos` | id, caso_id, npu, tribunal, comarca, sistema (eproc/e-SAJ/Projudi/PJe/STJ), grau, órgão julgador, classe, polo, segredo_justica, drive_pasta_id, última sincronização |
+| `processos` | id, caso_id, npu, tribunal (de origem, pelo segmento J.TR), comarca, sistema (eproc/e-SAJ/Projudi/PJe/STJ) com a fonte da confirmação (DJEN, robô ou titular), grau, órgão julgador, classe, polo, segredo_justica, drive_pasta_id, última sincronização |
 | `partes` | id, processo_id, nome, polo, advogados |
-| `publicacoes` | id, processo_id, origem (DJEN), hash, data_disponibilizacao, data_publicacao, tipo, texto, certidao_drive_id, situação da triagem |
+| `publicacoes` | id, processo_id, origem (DJEN), hash, identificador no DJEN, tribunal que publicou (calendário da contagem), órgão, classe, tipo de documento, link, data_disponibilizacao, data_publicacao, tipo, texto, certidao_drive_id, situação da triagem |
 | `movimentacoes` | id, processo_id, origem (DataJud/robô), data_hora, código, descrição |
 | `documentos` | id, processo_id ou caso_id, origem, evento, tipo, drive_file_id, sha256, páginas, texto_extraido, indexado |
 | `documentos_trechos` | id, documento_id, ordem, texto, embedding (gerado localmente; Seção 13.3) |
 | `sugestoes_ia` | id, publicacao_id ou movimentacao_id, tipo_ato, resumo, providencia, prazo_legal_id, modelo_sugerido, confiança, modelo_ia, versão do prompt |
 | `prazos` | id, processo_id, publicacao_id, prazo_legal_id, dias, multiplicador, data_publicacao, data_inicio, data_fatal (data de controle, sem prorrogação), data_fatal_com_prorrogacao, data_interna, calendario_conferido, memoria_calculo, situação, aprovado_por, aprovado_em |
-| `tarefas` | id, processo_id ou cliente_id, prazo_id (opcional), origem (publicação, movimentação, financeiro, atendimento), tipo (com prazo processual ou interna), responsável, revisor, situação, checklist, vencimento_interno |
+| `tarefas` | id, processo_id ou cliente_id, prazo_id (opcional), origem (publicação, movimentação, financeiro, atendimento, manual, importação), tipo (com prazo processual ou interna), responsável, revisor, situação, checklist, vencimento_interno |
 | `minutas` | id, tarefa_id, modelo_id, versão, docx_drive_id, pdf_drive_id, pendências_conferir, aprovado_por, aprovado_em |
 | `protocolos` | id, minuta_id, tribunal, nível (1, 2 ou 3; Seção 8.5), situação (preparado/conferido/protocolado), captura_tela_id, comprovante_drive_id, protocolado_em |
 | `audiencias` | id, processo_id, data_hora, tipo, local/link, google_event_id |
@@ -646,6 +646,7 @@ Requisitos de usabilidade: uso em computador e celular; ações de aprovação c
 | `modelos_mensagem` | id, canal (WhatsApp/e-mail), finalidade, texto, aprovado_por, aprovado_em, revogado_em |
 | `envios` | id, canal, destinatário, conteúdo, anexos, relatório PIE, autorizado_por, autorizado_em, enviado_em |
 | `auditoria` | id, usuário, ação, entidade, entidade_id, antes, depois, data_hora |
+| `importacao_legado` | origem, origem_id, destino, destino_id, observações (valores de origem não aproveitados), importado_em |
 
 ---
 
@@ -865,6 +866,8 @@ Consultas realizadas em 10/10/2026, por buscador restrito a domínios oficiais (
 
 **Versão 1.4 (11/10/2026):** implantação da estrutura do banco no Supabase de produção, no esquema `sgj`, com cópia de segurança prévia e carga dos dados de referência verificados (Seção 23.1).
 
+**Versão 1.5 (11/10/2026):** preparação da importação da carteira do protótipo e da ligação com a captura do DJEN (migração `0002_importacao_prototipo.sql`), com as decisões do titular sobre CPF e cliente não identificado (Seção 23.4); Seção 15 alinhada à migração.
+
 ---
 
 ## 23. Atualização de 10/10/2026: dados reais e decisões
@@ -886,6 +889,8 @@ O titular já mantém um projeto Supabase em São Paulo (PostgreSQL 17, região 
 ### 23.4 Carteira real
 
 **[FATO-DOC]** 97 processos cadastrados no protótipo, todos com numeração única válida (20 dígitos e dígito verificador conferido). Distribuição pelo segmento da numeração: Justiça Estadual, 87 (RS 47, SC 15, PR 11, SP 4, MS 3, RJ 3, MT 2, GO 1, DF 1); Justiça Federal, 5 (4ª Região 4, 1ª Região 1); Justiça do Trabalho, 5 (4ª Região 4, 12ª Região 1). Um processo está registrado como "TJRS/STJ". Pendências de qualidade: 16 grafias diferentes para o campo tribunal, 96 processos com situação "revisar", 49 com pasta de trabalho no Drive e áreas com grafias variadas. **Decisão:** a importação para o novo núcleo normaliza tribunal, sistema e área, e a situação "revisar" vira tarefa interna de conferência.
+
+**Decisões de 11/10/2026:** o CPF ou CNPJ dos clientes será informado depois (o protótipo não o registra); os 32 processos sem nome de cliente ficam reunidos num cliente provisório, com tarefa de identificação; o sistema de cada processo só é registrado com evidência (endereço do documento na comunicação do DJEN, robô ou titular), e os demais ficam a confirmar. Regras, resultado esperado e reversão em [`implantacao-supabase.md`](implantacao-supabase.md), Seção 6.
 
 **[FATO-DOC]** Nas publicações capturadas, o titular aparece apenas com a inscrição OAB/RS 107.046. A consulta nacional por essa inscrição já cobre os tribunais de todos os ramos que publicam no DJEN.
 
