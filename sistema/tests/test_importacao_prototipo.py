@@ -281,6 +281,7 @@ def test_repeticao_nao_duplica_e_vincula_processo_cadastrado_depois(banco, carte
         ("<table><tr><td>A</td><td>B</td></tr></table>", "A B"),
         ("Texto   simples\ncom quebra &ccedil;", "Texto simples\ncom quebra ç"),
         ("Espaço" + chr(0xA0) + " rígido", "Espaço rígido"),
+        ("a &ndash; b &mdash; c", "a " + chr(0x2013) + " b " + chr(0x2014) + " c"),
         ("<p> </p>", None),
     ],
 )

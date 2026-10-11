@@ -106,7 +106,7 @@ DECLARE
         'nbsp', ' ', 'emsp', ' ', 'ensp', ' ', 'thinsp', ' ',
         'lt', '<', 'gt', '>', 'quot', '"', 'apos', '''',
         'ldquo', '“', 'rdquo', '”', 'lsquo', '‘', 'rsquo', '’', 'laquo', '«', 'raquo', '»',
-        'ndash', '–', 'mdash', '—', 'hellip', '…', 'bull', '•', 'middot', '·',
+        'ndash', chr(8211), 'mdash', chr(8212), 'hellip', '…', 'bull', '•', 'middot', '·',
         'sect', '§', 'para', '¶', 'deg', '°', 'ordm', 'º', 'ordf', 'ª', 'acute', '´',
         'copy', '©', 'reg', '®', 'euro', '€',
         'aacute', 'á', 'Aacute', 'Á', 'agrave', 'à', 'Agrave', 'À', 'acirc', 'â', 'Acirc', 'Â',
@@ -149,7 +149,7 @@ BEGIN
                      CASE WHEN cp BETWEEN 1 AND 1114111 AND cp NOT BETWEEN 55296 AND 57343 THEN chr(cp) ELSE '' END);
     END LOOP;
     t := replace(t, '&amp;', '&');
-    t := regexp_replace(t, '[ \t\r\f\u00a0]+', ' ', 'g');
+    t := regexp_replace(t, '[ \t\r\f' || chr(160) || ']+', ' ', 'g');
     t := regexp_replace(t, ' ?\n ?', E'\n', 'g');
     t := regexp_replace(t, '\n{3,}', E'\n\n', 'g');
     RETURN nullif(btrim(t, E' \n'), '');
