@@ -3,10 +3,10 @@
 | Item | Conteúdo |
 |---|---|
 | Titular | Samuel Guimarães, OAB/RS 107.046 |
-| Versão | 1.6 (ver Seções 22 e 23) |
+| Versão | 1.7 (ver Seções 22 e 23) |
 | Data | 10/10/2026 |
 | Escopo | Sistema independente de gestão jurídica, com agente de IA (OpenAI/ChatGPT), Google Drive, Gmail, robôs de navegação nos sistemas dos tribunais, DJEN, DataJud, Asaas, Chatwoot e atendente virtual Iris |
-| Situação | Em implementação: motor de prazos, esquema do banco e material da Fase 0 entregues em [`sistema/`](../sistema/) e [`docs/fase0/`](fase0/); APIs do DJEN e do DataJud verificadas em chamadas reais; recomendações aceitas pelo titular em 10/10/2026 (Seção 23); estrutura do banco implantada no Supabase de produção em 11/10/2026; importação da carteira, ligação com a captura do DJEN e coleta do DataJud aplicadas em produção em 11/10/2026, pelo titular, no SQL Editor, com resultado conferido; Caixa de Publicações em ambiente de teste |
+| Situação | Em implementação: motor de prazos, esquema do banco e material da Fase 0 entregues em [`sistema/`](../sistema/) e [`docs/fase0/`](fase0/); APIs do DJEN e do DataJud verificadas em chamadas reais; recomendações aceitas pelo titular em 10/10/2026 (Seção 23); estrutura do banco implantada no Supabase de produção em 11/10/2026; importação da carteira, ligação com a captura do DJEN e coleta do DataJud aplicadas em produção em 11/10/2026, pelo titular, no SQL Editor, com resultado conferido; coleta do DJEN por processo e papel do aplicativo preparados (quarta etapa); painel "Meu dia", Caixa de Publicações e saúde das coletas em ambiente de teste; pacote de instalação no servidor preparado |
 
 Legenda de rótulos: **[FONTE]** norma ou documentação conferida por leitura integral na fonte oficial (nenhum item desta versão atinge esse grau, pela razão exposta na nota de método); **[CONFERIR]** dado extraído de fonte oficial apenas por trecho indexado, pendente de leitura integral; **[INTERPRETAÇÃO]** leitura técnica; **[HIPÓTESE]** estimativa ou suposição; **[RISCO]** risco operacional ou processual.
 
@@ -870,6 +870,8 @@ Consultas realizadas em 10/10/2026, por buscador restrito a domínios oficiais (
 **Versão 1.5 (11/10/2026):** preparação da importação da carteira do protótipo e da ligação com a captura do DJEN (migração `0002_importacao_prototipo.sql`), com as decisões do titular sobre CPF e cliente não identificado (Seção 23.4); Seção 15 alinhada à migração.
 
 **Versão 1.6 (11/10/2026):** termo inicial na tabela de prazos legais, para impedir o cálculo, a partir da publicação no DJEN, de atos com termo diverso (migração `0003`); coleta do DataJud no banco (migração `0004`); Caixa de Publicações em ambiente de teste, com cálculo pelo motor de prazos, aprovação, tarefa e auditoria (`sistema/sgj/caixa/`).
+
+**Versão 1.7 (11/10/2026):** coleta do DJEN também por número de processo, com sondagem e conferência cruzada com a captura por OAB (migração `0005`; Seção 19, risco 1); papel próprio do aplicativo no banco, com acesso mínimo (migração `0006`); painel "Meu dia" e saúde das coletas (Seção 14.1); pacote de instalação no servidor, com acesso só pela rede privada (`docs/implantacao-servidor.md`).
 
 ---
 

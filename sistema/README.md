@@ -7,8 +7,8 @@ Implementação do [plano de implementação](../docs/plano-sistema-gestao-jurid
 | Fase do plano | Entregue neste diretório | Pendente |
 |---|---|---|
 | 0. Preparação | Sondagem das APIs do DJEN e do DataJud (`sgj/sondagem_apis.py`); [lista de conferência e planilhas-modelo](../docs/fase0/) | Liberação de rede, leitura das fontes, teste real das APIs, planilhas preenchidas, decisões do titular |
-| 1. Núcleo e cadastro | Esquema do banco (`sgj/db/migrations/0001_inicial.sql`), com as regras do plano em restrições; importação da carteira do protótipo (`0002_importacao_prototipo.sql`); migrações 0001 a 0004 aplicadas em produção em 11/10/2026 ([registro](../docs/implantacao-supabase.md)) | Autenticação, integração com o Drive, painel definitivo |
-| 2. Publicações, prazos e tarefas | Motor de prazos (`sgj/prazos/`); ligação com a captura do DJEN (`sgj.sincronizar_djen`); termo inicial na tabela de prazos legais (`0003`); coleta do DataJud (`0004`); Caixa de Publicações em ambiente de teste (`sgj/caixa/`) | Triagem pela IA, notificações, calendários dos tribunais |
+| 1. Núcleo e cadastro | Esquema do banco (`sgj/db/migrations/0001_inicial.sql`), com as regras do plano em restrições; importação da carteira do protótipo (`0002_importacao_prototipo.sql`); migrações 0001 a 0004 aplicadas em produção em 11/10/2026 ([registro](../docs/implantacao-supabase.md)); papel do aplicativo no banco (`0006`); painel "Meu dia" em ambiente de teste; pacote de instalação no servidor (`implantacao/`) | Aplicação das migrações 0005 e 0006, instalação no servidor, login próprio (Google com segundo fator), integração com o Drive |
+| 2. Publicações, prazos e tarefas | Motor de prazos (`sgj/prazos/`); ligação com a captura do DJEN (`sgj.sincronizar_djen`); termo inicial na tabela de prazos legais (`0003`); coleta do DataJud (`0004`); coleta do DJEN por número de processo (`0005`); Caixa de Publicações e saúde das coletas em ambiente de teste (`sgj/caixa/`) | Triagem pela IA, notificações, calendários dos tribunais |
 
 ## Motor de prazos
 
@@ -33,6 +33,16 @@ r = calcular_prazo(calendario, disponibilizacao=date(2026, 8, 3), dias=15, tribu
 r.data_controle, r.prazo_interno, r.alertas, r.memoria
 ```
 
+## Painel "Meu dia" e saúde das coletas
+
+Tela inicial (plano, Seção 14.1), somente leitura:
+- prazos confirmados em ordem de vencimento, com semáforo (vencido, hoje, até 2 dias, até 7 dias), prazo interno e aviso de calendário não conferido;
+- publicações a triar e processos com publicação fora da carteira;
+- tarefas de prazo por situação e andamento da conferência do cadastro importado;
+- carteira por tribunal, com as pendências de cadastro e a cobertura do calendário do ano.
+
+A tela de coletas mostra a situação da captura por OAB, da sincronização, da consulta por processo e do DataJud, com os agendamentos em horário de Brasília. Falta de resposta aparece como falha de coleta, nunca como ausência de publicações.
+
 ## Caixa de Publicações (ambiente de teste)
 
 Fluxo da Seção 6.2 do plano sem a IA, que entra quando houver a conta da OpenAI: o advogado abre a publicação, escolhe o ato na tabela de prazos legais (ou informa os dias, com marca `[CONFERIR]`), vê o cálculo do motor com a memória e os alertas e aprova; a aprovação grava o prazo como confirmado, cria a tarefa e registra a auditoria. "Sem providência" arquiva a publicação com o motivo.
@@ -49,7 +59,11 @@ pip install -e ".[web]"
 SGJ_AMBIENTE=teste SGJ_DB_DSN="host=... dbname=..." python -m sgj.caixa   # http://127.0.0.1:8000
 ```
 
-Sem autenticação: a interface só inicia com `SGJ_AMBIENTE=teste` e só atende no próprio computador. A API JSON (`/api/...`, documentada em `/api/docs`) é a base do painel definitivo.
+Ainda sem login próprio, a interface só inicia em dois ambientes:
+- `SGJ_AMBIENTE=teste`: atende só no próprio computador;
+- `SGJ_AMBIENTE=rede_privada`: no servidor, aceita só pedidos da rede privada Tailscale cujo login conste de `SGJ_USUARIOS` ([roteiro de instalação](../docs/implantacao-servidor.md)).
+
+A API JSON (`/api/...`, documentada em `/api/docs`) é a base do painel definitivo.
 
 ## Banco de dados
 
@@ -69,6 +83,8 @@ PostgreSQL 16 com pgvector. Além das tabelas da Seção 15 do plano, a migraç�
 A migração `0002_importacao_prototipo.sql` traz a importação da carteira do protótipo (`sgj.importar_carteira_prototipo()`) e a ligação com a captura do DJEN já existente no banco (`sgj.sincronizar_djen()`, agendada duas vezes ao dia). Ambas são repetíveis e não alteram as tabelas de origem; regras, resultado esperado e conferência em produção em [`docs/implantacao-supabase.md`](../docs/implantacao-supabase.md), Seção 6.
 
 A migração `0003_termo_prazos_legais.sql` registra, na tabela de prazos legais, o termo inicial de cada ato (publicação no DJEN ou controle manual). A `0004_coleta_datajud.sql` cria a coleta do DataJud no próprio banco, pela extensão pg_net: consulta 30 processos por dia, grava os movimentos em `sgj.movimentacoes` (nunca abre prazo) e marca como sigiloso o processo que o DataJud indicar como tal; a chave pública do CNJ fica no Vault do Supabase. Aplicada em produção em 11/10/2026; conferência na Seção 7 do mesmo documento.
+
+A migração `0005_coleta_djen_processo.sql` consulta o DJEN também por número de processo, sem alterar a captura por OAB, e guarda só o que ela ainda não tinha. Começa em sondagem e confere cada resposta com a captura por OAB, porque o parâmetro de consulta por processo não foi conferido em fonte oficial. A `0006_acesso_aplicativo.sql` cria o papel `sgj_app`, usado pelo aplicativo no servidor, com acesso mínimo ao esquema `sgj`. Regras, resultado esperado e reversão na Seção 8 do mesmo documento.
 
 ## Testes
 

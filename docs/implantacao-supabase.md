@@ -173,6 +173,64 @@ DELETE FROM vault.secrets WHERE name = 'datajud_api_key';
 
 A coluna `termo` pode permanecer: o valor padrão (`publicacao`) reproduz o comportamento anterior.
 
+## 8. Quarta etapa: coleta do DJEN por processo e papel do aplicativo
+
+**Situação em 11/10/2026:** preparada e testada (115 testes) e ensaiada numa cópia da estrutura de produção. Execução pelo titular no SQL Editor, com o script único `aplicar_etapa4_supabase.sql` (migrações 0005 e 0006 numa só transação), entregue fora do repositório. Não altera o esquema `djen` nem os agendamentos existentes.
+
+### 8.1 Migração `sgj_0005_coleta_djen_processo`
+
+Arquivo: [`sistema/sgj/db/migrations/0005_coleta_djen_processo.sql`](../sistema/sgj/db/migrations/0005_coleta_djen_processo.sql). Atende ao risco 1 da Seção 19 do plano (coleta por OAB e por processo).
+
+| Item | Regra |
+|---|---|
+| Consulta | Mesma API da captura por OAB, a partir do banco em São Paulo, por número de processo de caso não encerrado; publicações dos últimos 7 dias; cada processo uma vez por dia |
+| Agenda | A cada 5 minutos, das 11h às 12h55 UTC (8h às 9h55 em Brasília), 10 processos por rodada (job `sgj-djen-processo`), fora dos horários da captura por OAB e do DataJud |
+| Gravação | Em `sgj.djen_comunicacao`, só as comunicações que a captura por OAB ainda não tinha; a sincronização passa a ler as duas fontes, sem duplicar |
+| Salvaguardas | **[CONFERIR]** o parâmetro `numeroProcesso` consta da API apenas por fontes de terceiros. Por isso: sondagem (um processo por rodada, num dia em que a captura por OAB já registrou comunicação dele, até a resposta trazê-la); resposta com comunicação de outro processo descartada por inteiro; suspensão por 24 horas nesse caso e diante de bloqueio (403) ou excesso de requisições (429); consulta que não traz comunicação já capturada por OAB fica divergente e devolve a coleta à sondagem |
+| Utilidade | Comunicação encontrada só pela consulta por processo indica intimação sem a OAB do titular; o total aparece na tela de coletas |
+
+### 8.2 Migração `sgj_0006_acesso_aplicativo`
+
+Arquivo: [`sistema/sgj/db/migrations/0006_acesso_aplicativo.sql`](../sistema/sgj/db/migrations/0006_acesso_aplicativo.sql). Prepara o acesso do aplicativo no servidor ([`implantacao-servidor.md`](implantacao-servidor.md)), conforme a orientação do Supabase de criar um usuário próprio para cada serviço (https://supabase.com/docs/guides/database/postgres/roles, consultada em 11/10/2026).
+
+- Papel `sgj_app`, criado sem login; a senha é definida na instalação do servidor, fora do repositório.
+- Lê o esquema `sgj`. Grava só em clientes, casos, processos, publicações, prazos, tarefas e calendário; na auditoria, só inclui. Não exclui registros.
+- Política explícita para o papel em cada tabela do esquema `sgj`, que tem segurança por linha ativa.
+- Duas funções com o privilégio do proprietário, `sgj.situacao_captura_djen()` e `sgj.agendamentos()`, para a tela de coletas ler a captura do DJEN e os agendamentos sem que o papel receba acesso aos esquemas `djen` e `cron`.
+
+### 8.3 Resultado esperado
+
+| Item | Esperado |
+|---|---|
+| Agendamentos do sistema | 4 (`sgj-sincronizar-djen`, `sgj-datajud-disparar`, `sgj-datajud-coletar`, `sgj-djen-processo`) |
+| Papel do aplicativo | Criado e sem login |
+| Políticas | 34, uma por tabela do esquema `sgj` |
+| Captura por OAB lida pela função | Número de páginas da última rodada |
+| Comunicações na fonte da sincronização | 42 (as da captura por OAB) |
+
+### 8.4 Como desfazer a quarta etapa
+
+```sql
+SELECT cron.unschedule('sgj-djen-processo');
+-- Reexecutar o CREATE FUNCTION sgj.sincronizar_djen() da migração 0002 como CREATE OR REPLACE.
+DROP FUNCTION sgj.djen_processo_rodada(integer, integer), sgj.djen_processo_coletar(),
+              sgj.djen_processo_disparar(integer, integer), sgj.djen_processo_pedir(bigint, text, date, date, boolean),
+              sgj.djen_fonte(), sgj.situacao_captura_djen(), sgj.agendamentos();
+DROP TABLE sgj.djen_comunicacao, sgj.djen_requisicao;
+DO $$ DECLARE t text; BEGIN
+    FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'sgj' LOOP
+        EXECUTE format('DROP POLICY IF EXISTS aplicativo ON sgj.%I', t);
+    END LOOP;
+END $$;
+REVOKE ALL ON ALL TABLES IN SCHEMA sgj FROM sgj_app;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA sgj FROM sgj_app;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA sgj FROM sgj_app;
+REVOKE USAGE ON SCHEMA sgj FROM sgj_app;
+DROP ROLE sgj_app;
+```
+
+As publicações que a consulta por processo trouxe para `sgj.publicacoes` permanecem: são comunicações oficiais do DJEN.
+
 ### 7.4 Conferência em produção
 
 Consultas somente de leitura, em 11/10/2026, depois das duas etapas:
@@ -185,4 +243,4 @@ Consultas somente de leitura, em 11/10/2026, depois das duas etapas:
 | Respostas do pg_net | Legíveis pelo papel dos agendamentos |
 | Processos a consultar | 97, nenhum de caso encerrado: a carteira inteira em quatro rodadas |
 | Acesso | Todas as tabelas do esquema `sgj` com segurança por linha; nenhuma das tabelas nem das 11 funções do esquema acessível a `anon` ou `authenticated` |
-| Primeira rodada automática | 11/10/2026: sincronização com o DJEN às 09h55 UTC; consulta ao DataJud às 10h20 UTC, com coleta às 10h30 e às 10h50 UTC |
+| Primeira rodada automática | 11/10/2026, conferida às 11h09 UTC: sincronização com o DJEN às 09h55 UTC concluída, sem comunicação nova; consulta ao DataJud às 10h20 UTC com 30 processos, todos com resposta HTTP 200, 28 com registros (3.138 movimentações gravadas, 28 processos sincronizados) e 2 do TJRS sem registros utilizáveis, que voltam à fila; coletas das 10h30 e das 10h50 UTC concluídas |

@@ -3,3 +3,4 @@
 .venv/
 # Dados reais (carteira, calendário preenchido, exportações) nunca entram no repositório
 dados/
+build/
