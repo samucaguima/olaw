@@ -65,3 +65,19 @@ def test_papel_nao_le_os_esquemas_da_captura_e_do_agendador(banco, aplicativo):
         banco.execute("SELECT count(*) FROM djen.requisicao")
     with pytest.raises(psycopg.errors.InsufficientPrivilege):
         banco.execute("SELECT sgj.sincronizar_djen()")
+
+
+def test_papel_cadastra_processo_e_grava_conferencia(banco, aplicativo):
+    from sgj.caixa import cadastro
+
+    banco.execute("RESET ROLE")
+    titular = banco.execute("INSERT INTO sgj.usuarios (nome, email, perfil) VALUES ('Titular', 't@exemplo.invalid', 'titular') "
+                            "RETURNING id").fetchone()[0]
+    banco.execute("SET ROLE sgj_app")
+    numero = "5004444" + "00" + "20258210001"
+    numero = numero[:7] + cadastro.digito_verificador(numero) + numero[9:]
+    resultado = cadastro.cadastrar_processo(banco, titular, {
+        "npu": numero, "segredo": "nao", "caso_titulo": "Caso novo", "cliente_acao": "novo", "cliente_novo_nome": "Cliente Novo"})
+    cadastro.salvar_conferencia(banco, resultado["tarefa_id"], titular,
+                                {"caso_titulo": "Caso novo", "segredo": "nao", "cliente_acao": "manter", "sistema": "eproc"}, [1])
+    assert banco.execute("SELECT sistema FROM sgj.processos WHERE npu = %s", (numero,)).fetchone()[0] == "eproc"

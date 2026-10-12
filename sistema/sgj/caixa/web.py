@@ -12,6 +12,7 @@ As ações são registradas em nome do titular cadastrado em sgj.usuarios.
 from __future__ import annotations
 
 import os
+import re
 from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import urlencode
@@ -23,7 +24,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from ..db.conexao import conectar
-from . import painel, servico
+from . import cadastro, painel, servico
 
 POR_PAGINA = 50
 AMBIENTES = {"teste": "ambiente de teste", "rede_privada": "rede privada"}
@@ -71,6 +72,7 @@ MODELOS.env.globals["classe_semaforo"] = {
     "vencido": "alerta", "hoje": "alerta", "dois_dias": "atencao", "semana": "", "depois": "",
 }
 MODELOS.env.globals["ambiente"] = "ambiente de teste"
+OPCOES_CADASTRO = {"sistemas": cadastro.SISTEMAS, "graus": cadastro.GRAUS, "polos": cadastro.POLOS, "areas": cadastro.AREAS}
 
 
 class PedidoPrazo(BaseModel):
@@ -221,6 +223,62 @@ def criar_app(dsn: str | None = None) -> FastAPI:
         except servico.OperacaoRecusada as erro:
             return _tela_publicacao(request, c, publicacao_id, erro=str(erro), status_code=422)
         return RedirectResponse(f"/caixa/{publicacao_id}?ok=arquivado", status_code=303)
+
+    # Conferência do cadastro e cadastro de processo
+
+    @app.get("/conferencia", response_class=HTMLResponse, include_in_schema=False)
+    def conferencias(request: Request, situacao: str = "pendentes", c=Depends(conexao)):
+        return MODELOS.TemplateResponse(request, "conferencias.html", {
+            "itens": cadastro.listar_conferencias(c, situacao=situacao), "situacao": situacao,
+        })
+
+    def _tela_conferencia(request: Request, c, tarefa_id: int, *, erro=None, mensagem=None, status_code=200):
+        dados = cadastro.obter_conferencia(c, tarefa_id)
+        if dados is None:
+            raise HTTPException(status_code=404, detail="Conferência não encontrada.")
+        return MODELOS.TemplateResponse(request, "conferencia.html", {
+            "c": dados, "erro": erro, "mensagem": mensagem, "clientes": cadastro.clientes_para_escolha(c),
+            **OPCOES_CADASTRO,
+        }, status_code=status_code)
+
+    @app.get("/conferencia/{tarefa_id}", response_class=HTMLResponse, include_in_schema=False)
+    def conferencia(request: Request, tarefa_id: int, ok: str = "", c=Depends(conexao)):
+        mensagens = {"salvo": "Dados gravados.", "cadastrado": "Processo cadastrado. Confira os itens restantes."}
+        return _tela_conferencia(request, c, tarefa_id, mensagem=mensagens.get(ok))
+
+    @app.post("/conferencia/{tarefa_id}", include_in_schema=False)
+    async def gravar_conferencia(request: Request, tarefa_id: int, c=Depends(conexao)):
+        formulario = await request.form()
+        concluir = [int(v) for v in formulario.getlist("concluir") if str(v).isdigit()]
+        try:
+            cadastro.salvar_conferencia(c, tarefa_id, servico.usuario_titular(c), dict(formulario), concluir)
+        except servico.OperacaoRecusada as erro:
+            return _tela_conferencia(request, c, tarefa_id, erro=str(erro), status_code=422)
+        return RedirectResponse(f"/conferencia/{tarefa_id}?ok=salvo", status_code=303)
+
+    def _tela_processo_novo(request: Request, c, formulario: dict, *, erro=None, status_code=200):
+        npu = re.sub(r"\D", "", formulario.get("npu") or "")
+        return MODELOS.TemplateResponse(request, "processo_novo.html", {
+            "f": {**formulario, "npu": npu}, "erro": erro, "clientes": cadastro.clientes_para_escolha(c),
+            "publicacoes": cadastro.publicacoes_sem_processo(c, npu) if npu else [], **OPCOES_CADASTRO,
+        }, status_code=status_code)
+
+    @app.get("/processos/novo", response_class=HTMLResponse, include_in_schema=False)
+    def processo_novo(request: Request, npu: str = "", c=Depends(conexao)):
+        digitos = re.sub(r"\D", "", npu)
+        tribunal = cadastro.tribunal_sugerido(c, digitos) if len(digitos) == 20 else None
+        return _tela_processo_novo(request, c, {"npu": digitos, "tribunal": tribunal})
+
+    @app.post("/processos/novo", include_in_schema=False)
+    async def cadastrar_processo(request: Request, c=Depends(conexao)):
+        formulario = dict(await request.form())
+        try:
+            resultado = cadastro.cadastrar_processo(c, servico.usuario_titular(c), formulario)
+        except servico.OperacaoRecusada as erro:
+            return _tela_processo_novo(request, c, formulario, erro=str(erro), status_code=422)
+        if resultado["tarefa_id"]:
+            return RedirectResponse(f"/conferencia/{resultado['tarefa_id']}?ok=cadastrado", status_code=303)
+        return RedirectResponse("/", status_code=303)
 
     # API JSON, para o painel definitivo
 

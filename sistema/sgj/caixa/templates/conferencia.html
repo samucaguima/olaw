@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block titulo %}Conferência {{ c.npu | npu }}{% endblock %}
+{% block conteudo %}
+<p class="linha"><a href="/conferencia">Conferência do cadastro</a></p>
+<h1><span class="npu">{{ c.npu | npu }}</span> · {{ c.tribunal }}</h1>
+
+{% if mensagem %}<div class="aviso ok">{{ mensagem }}</div>{% endif %}
+{% if erro %}<div class="aviso alerta">{{ erro }}</div>{% endif %}
+{% set fechada = c.tarefa_situacao in ("concluida", "cancelada") %}
+{% if fechada %}<div class="aviso ok">Conferência concluída.</div>{% endif %}
+
+<div class="cartao">
+  <dl class="grade">
+    <dt>Caso</dt><dd>{{ c.caso_codigo }} · {{ c.caso_titulo }}</dd>
+    <dt>Cliente</dt><dd>{{ c.cliente_codigo }} {{ c.cliente_nome }}{% if c.cliente_provisorio %} <span class="selo atencao">a identificar</span>{% endif %}</dd>
+    {% if c.orgao_julgador %}<dt>Órgão</dt><dd>{{ c.orgao_julgador }}</dd>{% endif %}
+    {% if c.classe %}<dt>Classe</dt><dd>{{ c.classe }}</dd>{% endif %}
+    <dt>Publicações</dt><dd>{{ c.publicacoes }}{% if c.ultima_publicacao %}, a última em {{ c.ultima_publicacao | data }}{% endif %}
+      {% if c.publicacoes %} · <a href="/caixa?situacao=todas&busca={{ c.npu }}">ver na Caixa</a>{% endif %}</dd>
+  </dl>
+  {% if c.legado %}
+  <details><summary>Dados do protótipo</summary>
+    <dl class="grade">
+      {% for chave, rotulo in [("nome", "Nome do cliente"), ("apelido", "Apelido"), ("tipo_acao", "Tipo de ação"), ("parte_contraria", "Parte contrária"), ("area", "Área"), ("tribunal", "Tribunal"), ("situacao", "Situação"), ("pasta_local", "Pasta local")] %}
+        {% if c.legado[chave] %}<dt>{{ rotulo }}</dt><dd>{{ c.legado[chave] }}</dd>{% endif %}
+      {% endfor %}
+    </dl>
+  </details>
+  {% endif %}
+</div>
+
+<form method="post" action="/conferencia/{{ c.tarefa_id }}">
+<h2>Processo</h2>
+<div class="cartao">
+  <div class="datas">
+    <div><label for="sistema">Sistema</label>
+      <select id="sistema" name="sistema" {% if fechada %}disabled{% endif %}><option value="">a confirmar</option>
+        {% for valor, nome in sistemas.items() %}<option value="{{ valor }}" {% if c.sistema == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+      </select></div>
+    <div><label for="grau">Grau</label>
+      <select id="grau" name="grau" {% if fechada %}disabled{% endif %}><option value="">a conferir</option>
+        {% for valor, nome in graus.items() %}<option value="{{ valor }}" {% if c.grau == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+      </select></div>
+    <div><label for="comarca">Comarca (1º grau)</label>
+      <input id="comarca" name="comarca" value="{{ c.comarca or '' }}" {% if fechada %}disabled{% endif %}></div>
+    <div><label for="polo">Polo do cliente</label>
+      <select id="polo" name="polo" {% if fechada %}disabled{% endif %}><option value="">a conferir</option>
+        {% for valor, nome in polos.items() %}<option value="{{ valor }}" {% if c.polo == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+      </select></div>
+  </div>
+  <fieldset {% if fechada %}disabled{% endif %}>
+    <legend>Segredo de justiça</legend>
+    <label><input type="radio" name="segredo" value="sim" {% if c.segredo_justica %}checked{% endif %}> sim</label>
+    <label><input type="radio" name="segredo" value="nao" {% if not c.segredo_justica %}checked{% endif %}> não</label>
+    <label><input type="checkbox" name="segredo_confirmado" value="1"> confirmo a informação acima, conferida no processo</label>
+  </fieldset>
+  <label for="drive_pasta">Pasta do processo no Drive (link)</label>
+  <input id="drive_pasta" name="drive_pasta" value="{{ c.drive_pasta_id or '' }}" size="60" {% if fechada %}disabled{% endif %}>
+</div>
+
+<h2>Caso e cliente</h2>
+<div class="cartao">
+  <label for="caso_titulo">Título do caso</label>
+  <input id="caso_titulo" name="caso_titulo" value="{{ c.caso_titulo }}" size="70" required {% if fechada %}disabled{% endif %}>
+  <label for="area">Área</label>
+  <select id="area" name="area" {% if fechada %}disabled{% endif %}><option value="">a definir</option>
+    {% for valor, nome in areas.items() %}<option value="{{ valor }}" {% if c.area == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+  </select>
+  <fieldset {% if fechada %}disabled{% endif %}>
+    <legend>Cliente</legend>
+    <label><input type="radio" name="cliente_acao" value="manter" checked> manter {{ c.cliente_codigo }} {{ c.cliente_nome }}</label>
+    {% if not c.cliente_provisorio %}
+    <div class="datas">
+      <div><label for="cliente_nome">Nome (vale para todos os casos do cliente)</label><input id="cliente_nome" name="cliente_nome" value="{{ c.cliente_nome }}" size="40"></div>
+      <div><label for="cliente_documento">CPF ou CNPJ</label><input id="cliente_documento" name="cliente_documento" value="{{ c.cpf_cnpj or '' }}" inputmode="numeric"></div>
+    </div>
+    {% endif %}
+    <label><input type="radio" name="cliente_acao" value="existente"> passar o caso para outro cliente já cadastrado</label>
+    <select name="cliente_existente"><option value="">escolha</option>
+      {% for k in clientes %}<option value="{{ k.codigo }}">{{ k.nome }} ({{ k.codigo }})</option>{% endfor %}
+    </select>
+    <label><input type="radio" name="cliente_acao" value="novo"> cadastrar cliente novo</label>
+    <div class="datas">
+      <div><label for="cliente_novo_nome">Nome</label><input id="cliente_novo_nome" name="cliente_novo_nome" size="40"></div>
+      <div><label for="cliente_novo_documento">CPF ou CNPJ (opcional)</label><input id="cliente_novo_documento" name="cliente_novo_documento" inputmode="numeric"></div>
+    </div>
+  </fieldset>
+</div>
+
+<h2>Itens da conferência</h2>
+<div class="cartao">
+  {% for i in c.itens %}
+  <div class="linha">
+    {% if i.concluido %}<span class="selo ok">conferido</span> {{ i.texto }}
+    {% else %}<label><input type="checkbox" name="concluir" value="{{ i.indice }}" {% if fechada %}disabled{% endif %}> {{ i.texto }}</label>
+      {% if i.pendencia %}<span class="selo atencao">{{ i.pendencia }}</span>{% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+  <p class="linha">Os dados acima são gravados mesmo sem marcar itens. Item marcado só é concluído se o dado correspondente estiver preenchido; se algum não puder ser concluído, nada é gravado.</p>
+  {% if not fechada %}<div class="acoes"><button type="submit">Gravar</button></div>{% endif %}
+</div>
+</form>
+{% endblock %}

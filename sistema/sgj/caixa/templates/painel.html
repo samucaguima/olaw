@@ -56,12 +56,13 @@
 <div class="aviso atencao">Publicações em seu nome de processos que não constam da carteira. Verifique se há atuação e prazo em curso; cadastrado o processo, as publicações se ligam a ele na sincronização seguinte.</div>
 <div class="cartao tabela">
   <table>
-    <thead><tr><th>Processo</th><th>Tribunal</th><th>Última</th><th>Tipo</th><th class="num">Publicações</th></tr></thead>
+    <thead><tr><th>Processo</th><th>Tribunal</th><th>Última</th><th>Tipo</th><th class="num">Publicações</th><th></th></tr></thead>
     <tbody>
     {% for f in fora_da_carteira %}
       <tr><td><a class="npu" href="/caixa/{{ f.ultima_publicacao_id }}">{{ f.npu | npu }}</a></td><td>{{ f.tribunais }}</td>
         <td>{{ f.ultima | data }}</td><td>{{ f.ultimo_tipo or "" }}</td>
-        <td class="num">{{ f.publicacoes }}{% if f.a_triar %} ({{ f.a_triar }} a triar){% endif %}</td></tr>
+        <td class="num">{{ f.publicacoes }}{% if f.a_triar %} ({{ f.a_triar }} a triar){% endif %}</td>
+        <td><a href="/processos/novo?npu={{ f.npu }}">cadastrar</a></td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -81,7 +82,7 @@
 <h2>Conferência do cadastro importado</h2>
 <div class="cartao">
   {% set c = tarefas.conferencia %}
-  <p><b>{{ c.concluidas }} de {{ c.total }}</b> conferências concluídas.</p>
+  <p><b>{{ c.concluidas }} de {{ c.total }}</b> conferências concluídas. <a href="/conferencia">Abrir a conferência</a></p>
   {% if c.total %}<progress max="{{ c.total }}" value="{{ c.concluidas }}"></progress>{% endif %}
   {% if c.pendencias %}
   <div class="tabela">

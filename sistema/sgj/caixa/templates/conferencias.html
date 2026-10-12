@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block titulo %}Conferência do cadastro{% endblock %}
+{% block conteudo %}
+<h1>Conferência do cadastro</h1>
+<p class="linha">Processos com publicação mais recente primeiro. Comece pelo item do segredo de justiça: a IA só vai operar em processo com esse item conferido.</p>
+
+<form class="filtros" method="get" action="/conferencia">
+  <div>
+    <label for="situacao">Situação</label>
+    <select id="situacao" name="situacao">
+      <option value="pendentes" {% if situacao == "pendentes" %}selected{% endif %}>Pendentes</option>
+      <option value="concluidas" {% if situacao == "concluidas" %}selected{% endif %}>Concluídas</option>
+    </select>
+  </div>
+  <button type="submit">Filtrar</button>
+</form>
+
+<p class="linha">{{ itens | length }} {{ "conferências" if itens | length != 1 else "conferência" }}</p>
+
+{% for c in itens %}
+<a class="cartao item" href="/conferencia/{{ c.tarefa_id }}">
+  <div class="linha">
+    <span class="npu">{{ c.npu | npu }}</span><span class="selo">{{ c.tribunal }}</span>
+    {% if c.segredo_justica %}<span class="selo alerta">segredo de justiça</span>{% endif %}
+    {% if c.ultima_publicacao %}<span>última publicação {{ c.ultima_publicacao | data }}</span>{% endif %}
+  </div>
+  <div>{{ c.caso_titulo }}</div>
+  <div class="linha"><span>{{ c.cliente_codigo }} {{ c.cliente_nome }}</span>
+    {% if c.pendentes %}<span class="selo atencao">{{ c.pendentes | length }} {{ "itens pendentes" if c.pendentes | length != 1 else "item pendente" }}</span>
+    {% else %}<span class="selo ok">conferido</span>{% endif %}
+  </div>
+</a>
+{% else %}
+<div class="cartao">Nenhuma conferência nesta situação.</div>
+{% endfor %}
+{% endblock %}

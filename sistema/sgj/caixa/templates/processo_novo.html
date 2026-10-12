@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block titulo %}Cadastrar processo{% endblock %}
+{% block conteudo %}
+<p class="linha"><a href="/">Meu dia</a></p>
+<h1>Cadastrar processo</h1>
+{% if erro %}<div class="aviso alerta">{{ erro }}</div>{% endif %}
+
+{% if publicacoes %}
+<div class="cartao">
+  <b>Publicações já capturadas deste processo</b>
+  {% for p in publicacoes %}
+  <div class="linha"><a href="/caixa/{{ p.id }}">{{ p.data_disponibilizacao | data }}</a><span>{{ p.tribunal or "" }}</span><span>{{ p.tipo or "" }}</span>
+    <span class="selo {% if p.situacao_triagem in ('capturada', 'triada') %}atencao{% endif %}">{{ rotulo_situacao[p.situacao_triagem] }}</span></div>
+  {% endfor %}
+  <p class="linha">Cadastrado o processo, elas se ligam a ele, e a Caixa passa a permitir o cálculo do prazo.</p>
+</div>
+{% endif %}
+
+<form method="post" action="/processos/novo">
+<div class="cartao">
+  <div class="datas">
+    <div><label for="npu">Número do processo</label><input id="npu" name="npu" value="{{ f.npu | npu }}" required size="28"></div>
+    <div><label for="tribunal">Tribunal</label><input id="tribunal" name="tribunal" value="{{ f.tribunal or '' }}" size="8"></div>
+    <div><label for="sistema">Sistema</label>
+      <select id="sistema" name="sistema"><option value="">a confirmar</option>
+        {% for valor, nome in sistemas.items() %}<option value="{{ valor }}" {% if f.sistema == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+      </select></div>
+    <div><label for="grau">Grau</label>
+      <select id="grau" name="grau"><option value="">a conferir</option>
+        {% for valor, nome in graus.items() %}<option value="{{ valor }}" {% if f.grau == valor|string %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+      </select></div>
+    <div><label for="comarca">Comarca (1º grau)</label><input id="comarca" name="comarca" value="{{ f.comarca or '' }}"></div>
+    <div><label for="polo">Polo do cliente</label>
+      <select id="polo" name="polo"><option value="">a conferir</option>
+        {% for valor, nome in polos.items() %}<option value="{{ valor }}" {% if f.polo == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+      </select></div>
+  </div>
+  <fieldset>
+    <legend>Segredo de justiça (obrigatório)</legend>
+    <label><input type="radio" name="segredo" value="sim" {% if f.segredo == "sim" %}checked{% endif %}> sim</label>
+    <label><input type="radio" name="segredo" value="nao" {% if f.segredo == "nao" %}checked{% endif %}> não</label>
+  </fieldset>
+  <label for="caso_titulo">Título do caso</label>
+  <input id="caso_titulo" name="caso_titulo" value="{{ f.caso_titulo or '' }}" size="70" required>
+  <label for="area">Área</label>
+  <select id="area" name="area"><option value="">a definir</option>
+    {% for valor, nome in areas.items() %}<option value="{{ valor }}" {% if f.area == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+  </select>
+  <fieldset>
+    <legend>Cliente</legend>
+    <label><input type="radio" name="cliente_acao" value="existente" {% if f.cliente_acao != "novo" %}checked{% endif %}> cliente já cadastrado</label>
+    <select name="cliente_existente"><option value="">escolha</option>
+      {% for k in clientes %}<option value="{{ k.codigo }}" {% if f.cliente_existente == k.codigo %}selected{% endif %}>{{ k.nome }} ({{ k.codigo }})</option>{% endfor %}
+    </select>
+    <label><input type="radio" name="cliente_acao" value="novo" {% if f.cliente_acao == "novo" %}checked{% endif %}> cliente novo</label>
+    <div class="datas">
+      <div><label for="cliente_novo_nome">Nome</label><input id="cliente_novo_nome" name="cliente_novo_nome" value="{{ f.cliente_novo_nome or '' }}" size="40"></div>
+      <div><label for="cliente_novo_documento">CPF ou CNPJ (opcional)</label><input id="cliente_novo_documento" name="cliente_novo_documento" value="{{ f.cliente_novo_documento or '' }}" inputmode="numeric"></div>
+    </div>
+  </fieldset>
+  <div class="acoes"><button type="submit">Cadastrar</button></div>
+</div>
+</form>
+{% endblock %}
