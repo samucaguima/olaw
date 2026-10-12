@@ -871,7 +871,7 @@ Consultas realizadas em 10/10/2026, por buscador restrito a domínios oficiais (
 
 **Versão 1.6 (11/10/2026):** termo inicial na tabela de prazos legais, para impedir o cálculo, a partir da publicação no DJEN, de atos com termo diverso (migração `0003`); coleta do DataJud no banco (migração `0004`); Caixa de Publicações em ambiente de teste, com cálculo pelo motor de prazos, aprovação, tarefa e auditoria (`sistema/sgj/caixa/`).
 
-**Versão 1.7 (11/10/2026):** coleta do DJEN também por número de processo, com sondagem e conferência cruzada com a captura por OAB (migração `0005`; Seção 19, risco 1); papel próprio do aplicativo no banco, com acesso mínimo (migração `0006`); painel "Meu dia" e saúde das coletas (Seção 14.1); pacote de instalação no servidor, com acesso só pela rede privada (`docs/implantacao-servidor.md`).
+**Versão 1.7 (11/10/2026):** coleta do DJEN também por número de processo, com sondagem e conferência cruzada com a captura por OAB (migração `0005`; Seção 19, risco 1); papel próprio do aplicativo no banco, com acesso mínimo (migração `0006`); painel "Meu dia" e saúde das coletas (Seção 14.1); conferência do cadastro importado e cadastro de processo a partir de publicação fora da carteira (Seção 23.4); pacote de instalação no servidor, com acesso só pela rede privada (`docs/implantacao-servidor.md`).
 
 ---
 

@@ -43,6 +43,16 @@ Tela inicial (plano, Seção 14.1), somente leitura:
 
 A tela de coletas mostra a situação da captura por OAB, da sincronização, da consulta por processo e do DataJud, com os agendamentos em horário de Brasília. Falta de resposta aparece como falha de coleta, nunca como ausência de publicações.
 
+## Conferência do cadastro e cadastro de processo
+
+A tela de conferência (`/conferencia`) percorre as tarefas de conferência dos processos importados, com publicação mais recente primeiro. Grava sistema, grau, comarca, polo, segredo de justiça, área, cliente (manter, trocar ou cadastrar) e pasta do Drive. Regras:
+- item só é concluído se o dado correspondente estiver preenchido (sistema informado, caso fora do cliente provisório, grau e comarca do 1º grau, polo, área, pasta);
+- o segredo de justiça exige confirmação expressa, porque dele depende a habilitação da IA;
+- se algum item marcado não puder ser concluído, nada é gravado;
+- toda alteração vai para a trilha de auditoria, com os valores anterior e novo.
+
+Os processos com publicação fora da carteira podem ser cadastrados pelo painel. O número passa pela conferência do dígito verificador, as publicações já capturadas se ligam ao processo, e uma conferência é aberta com os dados que ficaram faltando.
+
 ## Caixa de Publicações (ambiente de teste)
 
 Fluxo da Seção 6.2 do plano sem a IA, que entra quando houver a conta da OpenAI: o advogado abre a publicação, escolhe o ato na tabela de prazos legais (ou informa os dias, com marca `[CONFERIR]`), vê o cálculo do motor com a memória e os alertas e aprova; a aprovação grava o prazo como confirmado, cria a tarefa e registra a auditoria. "Sem providência" arquiva a publicação com o motivo.
