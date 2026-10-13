@@ -18,6 +18,7 @@ A imagem do contêiner não foi construída nesta sessão, porque o ambiente de 
 | Aplicativo | Contêiner Docker, com a porta publicada só no próprio servidor (`127.0.0.1:8000`) | Nada do aplicativo fica exposto à internet |
 | Acesso | Rede privada Tailscale, com HTTPS (`tailscale serve`) | Só os dispositivos do titular, conectados à rede privada, alcançam o aplicativo |
 | Quem entra | O aplicativo confere o login informado pelo Tailscale (cabeçalho `Tailscale-User-Login`) contra a lista `SGJ_USUARIOS` | Recusa qualquer outro login, mesmo dentro da rede privada |
+| Gravações | O aplicativo só aceita gravação (aprovar, arquivar, conferir, cadastrar) que o navegador ateste ter partido das telas do próprio sistema (cabeçalho `Sec-Fetch-Site`, ou `Origin` igual ao endereço) | O Tailscale informa o login em toda requisição que sai do computador do titular, inclusive a que outra página aberta no navegador tente mandar ao sistema; sem essa conferência, a página poderia, por exemplo, arquivar publicações (revisão de segurança de 13/10/2026) |
 | Banco | Supabase, com o papel próprio `sgj_app` (migração 0006) | Orientação do Supabase de criar um usuário por serviço, em vez de usar a senha do `postgres` ([documentação](https://supabase.com/docs/guides/database/postgres/roles)) |
 | Firewall | Só SSH aceito de fora | Superfície mínima |
 | Cópia de segurança | Diária, do esquema `sgj`, cifrada (AES-256), com 30 dias no servidor | Plano, Seção 16 |

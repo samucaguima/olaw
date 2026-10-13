@@ -7,6 +7,14 @@ Seção 16). Por isso só inicia em dois ambientes:
   Tailscale, que informa o login de quem acessa no cabeçalho
   Tailscale-User-Login; só os logins de SGJ_USUARIOS entram.
 As ações são registradas em nome do titular cadastrado em sgj.usuarios.
+
+O Tailscale informa o login em toda requisição que sai do computador do
+titular, inclusive a que outra página aberta no navegador mande ao sistema.
+Por isso, gravação (POST) só é aceita quando o navegador atesta que partiu das
+telas do próprio sistema (Sec-Fetch-Site, ou Origin igual ao endereço); e, no
+ambiente de teste, só se atende pelo endereço 127.0.0.1 ou localhost, o que
+impede outra página de ler o sistema trocando o endereço do próprio domínio
+(DNS rebinding).
 """
 
 from __future__ import annotations
@@ -15,7 +23,7 @@ import os
 import re
 from datetime import date, datetime
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
@@ -30,6 +38,8 @@ POR_PAGINA = 50
 AMBIENTES = {"teste": "ambiente de teste", "rede_privada": "rede privada"}
 CABECALHO_IDENTIDADE = "Tailscale-User-Login"
 SEM_IDENTIDADE = {"/saude"}
+METODOS_DE_LEITURA = {"GET", "HEAD", "OPTIONS"}
+HOSTS_DE_TESTE = {"127.0.0.1", "localhost"}
 MODELOS = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 
@@ -104,6 +114,25 @@ def _usuarios_autorizados() -> set[str]:
     return autorizados
 
 
+def _nome_do_host(host: str) -> str:
+    try:
+        return urlsplit("//" + host).hostname or ""
+    except ValueError:
+        return ""
+
+
+def _partiu_do_proprio_sistema(request: Request) -> bool:
+    """Atestado do navegador de que a requisição saiu de uma tela do próprio sistema."""
+    site = request.headers.get("sec-fetch-site")
+    if site is not None:
+        return site == "same-origin"
+    try:
+        origem = urlsplit(request.headers.get("origin", "")).netloc.lower()
+    except ValueError:
+        return False
+    return bool(origem) and origem == request.headers.get("host", "").lower()
+
+
 def criar_app(dsn: str | None = None) -> FastAPI:
     ambiente = os.environ.get("SGJ_AMBIENTE", "")
     if ambiente not in AMBIENTES:
@@ -114,7 +143,19 @@ def criar_app(dsn: str | None = None) -> FastAPI:
     autorizados = _usuarios_autorizados() if ambiente == "rede_privada" else None
     MODELOS.env.globals["ambiente"] = AMBIENTES[ambiente]
 
-    app = FastAPI(title="Gestão jurídica", docs_url="/api/docs", redoc_url=None)
+    # A documentação da API carrega código de fora (CDN); fica só no ambiente de teste.
+    teste = ambiente == "teste"
+    app = FastAPI(title="Gestão jurídica", docs_url="/api/docs" if teste else None,
+                  openapi_url="/openapi.json" if teste else None, redoc_url=None)
+
+    @app.middleware("http")
+    async def origem(request: Request, call_next):
+        if teste and _nome_do_host(request.headers.get("host", "")) not in HOSTS_DE_TESTE:
+            return PlainTextResponse("No ambiente de teste, acesse pelo endereço http://127.0.0.1:8000.", status_code=400)
+        if request.method not in METODOS_DE_LEITURA and not _partiu_do_proprio_sistema(request):
+            return PlainTextResponse("Gravação recusada: a requisição não partiu das telas do próprio sistema.",
+                                     status_code=403)
+        return await call_next(request)
 
     if autorizados is not None:
         @app.middleware("http")

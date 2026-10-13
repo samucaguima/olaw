@@ -53,6 +53,7 @@
     <label><input type="radio" name="segredo" value="sim" {% if c.segredo_justica %}checked{% endif %}> sim</label>
     <label><input type="radio" name="segredo" value="nao" {% if not c.segredo_justica %}checked{% endif %}> não</label>
     <label><input type="checkbox" name="segredo_confirmado" value="1"> confirmo a informação acima, conferida no processo</label>
+    <p class="linha">A confirmação é exigida para concluir o item e para mudar a informação.</p>
   </fieldset>
   <label for="drive_pasta">Pasta do processo no Drive (link)</label>
   <input id="drive_pasta" name="drive_pasta" value="{{ c.drive_pasta_id or '' }}" size="60" {% if fechada %}disabled{% endif %}>

@@ -47,7 +47,7 @@ A tela de coletas mostra a situação da captura por OAB, da sincronização, da
 
 A tela de conferência (`/conferencia`) percorre as tarefas de conferência dos processos importados, com publicação mais recente primeiro. Grava sistema, grau, comarca, polo, segredo de justiça, área, cliente (manter, trocar ou cadastrar) e pasta do Drive. Regras:
 - item só é concluído se o dado correspondente estiver preenchido (sistema informado, caso fora do cliente provisório, grau e comarca do 1º grau, polo, área, pasta);
-- o segredo de justiça exige confirmação expressa, porque dele depende a habilitação da IA;
+- o segredo de justiça exige confirmação expressa, tanto para concluir o item quanto para mudar a informação (sobretudo para retirá-lo), porque dele depende a habilitação da IA;
 - se algum item marcado não puder ser concluído, nada é gravado;
 - toda alteração vai para a trilha de auditoria, com os valores anterior e novo.
 
@@ -73,7 +73,9 @@ Ainda sem login próprio, a interface só inicia em dois ambientes:
 - `SGJ_AMBIENTE=teste`: atende só no próprio computador;
 - `SGJ_AMBIENTE=rede_privada`: no servidor, aceita só pedidos da rede privada Tailscale cujo login conste de `SGJ_USUARIOS` ([roteiro de instalação](../docs/implantacao-servidor.md)).
 
-A API JSON (`/api/...`, documentada em `/api/docs`) é a base do painel definitivo.
+Nos dois ambientes, gravação só é aceita quando o navegador atesta que partiu das telas do próprio sistema (`Sec-Fetch-Site: same-origin`, ou `Origin` igual ao endereço); assim, outra página aberta no navegador não consegue aprovar, arquivar nem alterar cadastro. No ambiente de teste, o sistema só atende pelos endereços `127.0.0.1` e `localhost`, o que impede outra página de ler os dados trocando o endereço do próprio domínio (DNS rebinding).
+
+A API JSON (`/api/...`) é a base do painel definitivo; a documentação dela (`/api/docs`) só fica disponível no ambiente de teste, porque carrega código de fora.
 
 ## Banco de dados
 

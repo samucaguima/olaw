@@ -14,6 +14,9 @@ psycopg = pytest.importorskip("psycopg")
 
 pytestmark = pytest.mark.skipif(not os.environ.get("SGJ_TEST_PG_DSN"), reason="SGJ_TEST_PG_DSN não definido")
 
+# Cabeçalho com que o navegador atesta que a gravação partiu das telas do próprio sistema (web.py).
+MESMA_ORIGEM = {"Sec-Fetch-Site": "same-origin"}
+
 SIMULACAO = """
 CREATE SCHEMA djen;
 CREATE TABLE djen.comunicacao (
@@ -205,7 +208,7 @@ def cliente_web(banco, cenario):
     anterior = os.environ.get("SGJ_AMBIENTE")
     os.environ["SGJ_AMBIENTE"] = "teste"
     try:
-        yield TestClient(criar_app(banco.info.dsn))
+        yield TestClient(criar_app(banco.info.dsn), base_url="http://127.0.0.1:8000", headers=MESMA_ORIGEM)
     finally:
         if anterior is None:
             os.environ.pop("SGJ_AMBIENTE", None)
@@ -244,6 +247,13 @@ def test_rede_privada_exige_login_autorizado(banco, cenario, monkeypatch):
     assert pagina.status_code == 200
     assert "rede privada · titular@exemplo.invalid" in pagina.text
     assert cliente.get("/saude").json() == {"banco": "ok"}
+    # O Tailscale informa o login também quando outra página manda o navegador gravar no sistema.
+    titular = {"Tailscale-User-Login": "titular@exemplo.invalid"}
+    outro_site = cliente.post("/caixa/1/arquivar", headers={**titular, "Sec-Fetch-Site": "cross-site"})
+    assert outro_site.status_code == 403 and "não partiu das telas" in outro_site.text
+    assert cliente.post("/caixa/999999/arquivar", headers={**titular, "Sec-Fetch-Site": "same-origin"}).status_code == 404
+    assert cliente.get("/api/docs", headers=titular).status_code == 404
+    assert cliente.get("/openapi.json", headers=titular).status_code == 404
     monkeypatch.setenv("SGJ_AMBIENTE", "producao")
     with pytest.raises(RuntimeError, match="SGJ_AMBIENTE=rede_privada"):
         criar_app(banco.info.dsn)

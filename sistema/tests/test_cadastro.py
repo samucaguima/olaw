@@ -9,6 +9,9 @@ psycopg = pytest.importorskip("psycopg")
 
 pytestmark = pytest.mark.skipif(not os.environ.get("SGJ_TEST_PG_DSN"), reason="SGJ_TEST_PG_DSN não definido")
 
+# Cabeçalho com que o navegador atesta que a gravação partiu das telas do próprio sistema (web.py).
+MESMA_ORIGEM = {"Sec-Fetch-Site": "same-origin"}
+
 ITENS = [
     'Revisar o cadastro: o processo estava com a situação "revisar" no protótipo',
     "Identificar o cliente e vincular o caso a ele",
@@ -112,6 +115,10 @@ def test_segredo_de_justica_exige_confirmacao_expressa(banco, cenario):
     salvar(banco, cenario, concluir=[5], sistema="eproc", grau="1", comarca="Torres", polo="passivo", segredo="sim",
            segredo_confirmado="1")
     assert processo(banco, cenario)[5] is True and 5 in itens_concluidos(banco, cenario)
+    # Retirar o segredo também exige a confirmação, mesmo sem marcar item.
+    with pytest.raises(OperacaoRecusada, match="mudar o segredo"):
+        salvar(banco, cenario, sistema="eproc", grau="1", comarca="Torres", polo="passivo", segredo="nao")
+    assert processo(banco, cenario)[5] is True
 
 
 def test_cliente_novo_tira_o_caso_do_provisorio_e_documento_repetido_e_recusado(banco, cenario):
@@ -170,7 +177,7 @@ def cliente_web(banco, cenario):
     anterior = os.environ.get("SGJ_AMBIENTE")
     os.environ["SGJ_AMBIENTE"] = "teste"
     try:
-        yield TestClient(criar_app(banco.info.dsn))
+        yield TestClient(criar_app(banco.info.dsn), base_url="http://127.0.0.1:8000", headers=MESMA_ORIGEM)
     finally:
         if anterior is None:
             os.environ.pop("SGJ_AMBIENTE", None)

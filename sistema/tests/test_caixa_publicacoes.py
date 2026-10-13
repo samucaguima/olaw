@@ -10,6 +10,9 @@ psycopg = pytest.importorskip("psycopg")
 
 pytestmark = pytest.mark.skipif(not os.environ.get("SGJ_TEST_PG_DSN"), reason="SGJ_TEST_PG_DSN não definido")
 
+# Cabeçalho com que o navegador atesta que a gravação partiu das telas do próprio sistema (web.py).
+MESMA_ORIGEM = {"Sec-Fetch-Site": "same-origin"}
+
 from sgj.caixa import servico  # noqa: E402
 from sgj.caixa.servico import OperacaoRecusada  # noqa: E402
 
@@ -180,7 +183,7 @@ def cliente_web(banco, dados):
     anterior = os.environ.get("SGJ_AMBIENTE")
     os.environ["SGJ_AMBIENTE"] = "teste"
     try:
-        yield TestClient(criar_app(banco.info.dsn))
+        yield TestClient(criar_app(banco.info.dsn), base_url="http://127.0.0.1:8000", headers=MESMA_ORIGEM)
     finally:
         if anterior is None:
             os.environ.pop("SGJ_AMBIENTE", None)
@@ -228,3 +231,31 @@ def test_api_json(cliente_web, dados):
     aprovacao = cliente_web.post(f"/api/publicacoes/{dados['i']}/aprovacao", json={"prazo_legal_id": dados["manifestacao"]})
     assert aprovacao.status_code == 201 and aprovacao.json()["calculo"]["prazo_interno"] == "2026-08-18"
     assert cliente_web.get("/api/publicacoes", params={"situacao": "aprovada"}).json()["total"] >= 3
+
+
+def test_gravacao_que_nao_parte_das_telas_do_sistema_e_recusada(banco, cliente_web, dados):
+    from fastapi.testclient import TestClient
+
+    situacao = "SELECT situacao_triagem FROM sgj.publicacoes WHERE id = %s"
+    antes = banco.execute(situacao, (dados["h"],)).fetchone()[0]
+    outro_site = cliente_web.post(f"/caixa/{dados['h']}/arquivar", data={"motivo": ""}, follow_redirects=False,
+                                  headers={"Sec-Fetch-Site": "cross-site", "Origin": "https://atacante.example"})
+    assert outro_site.status_code == 403
+    assert cliente_web.post(f"/caixa/{dados['h']}/arquivar", headers={"Sec-Fetch-Site": "same-site"}).status_code == 403
+    # Navegador sem Sec-Fetch-Site: vale a Origin, que precisa ser o próprio endereço.
+    sem_atestado = TestClient(cliente_web.app, base_url="http://127.0.0.1:8000")
+    assert sem_atestado.post(f"/caixa/{dados['h']}/arquivar").status_code == 403
+    assert sem_atestado.post(f"/caixa/{dados['h']}/arquivar", headers={"Origin": "https://atacante.example"}).status_code == 403
+    assert banco.execute(situacao, (dados["h"],)).fetchone()[0] == antes
+    mesma_origem = sem_atestado.post(f"/caixa/{dados['g']}/calcular", data={"prazo_legal_id": str(dados["manifestacao"])},
+                                     headers={"Origin": "http://127.0.0.1:8000"})
+    assert mesma_origem.status_code == 200
+
+
+def test_ambiente_de_teste_so_atende_pelo_endereco_local(cliente_web):
+    from fastapi.testclient import TestClient
+
+    # Outra página que aponte o próprio domínio para 127.0.0.1 (DNS rebinding) chega com outro endereço.
+    assert TestClient(cliente_web.app, base_url="http://atacante.example:8000").get("/api/painel").status_code == 400
+    assert TestClient(cliente_web.app, base_url="http://localhost:8000").get("/saude").status_code == 200
+    assert cliente_web.get("/api/docs").status_code == 200

@@ -4,7 +4,8 @@ A conferência grava os dados que o titular confirma (sistema, grau, comarca,
 polo, segredo de justiça, área, cliente, pasta no Drive) e só dá como
 concluído o item que os dados sustentam: o sistema só fica conferido se
 informado, o cliente só se o caso saiu do cliente provisório, e assim por
-diante. O segredo de justiça exige confirmação expressa, porque dele depende
+diante. O segredo de justiça exige confirmação expressa, tanto para concluir
+o item quanto para mudar a informação, porque dele depende
 a habilitação da IA (plano, Seção 23.6, decisão 10). Toda alteração fica na
 trilha de auditoria, numa só transação.
 """
@@ -282,14 +283,18 @@ def salvar_conferencia(conexao, tarefa_id: int, usuario_id: int, formulario: dic
                 "drive_pasta_id": identificador_pasta(formulario.get("drive_pasta")) or atual["drive_pasta_id"],
             }
             segredo = formulario.get("segredo")
+            confirmado = bool(formulario.get("segredo_confirmado")) and segredo in ("sim", "nao")
             if segredo in ("sim", "nao"):
+                # Mudar o segredo, sobretudo retirá-lo, exige a mesma confirmação expressa do item.
+                if (segredo == "sim") != atual["segredo_justica"] and not confirmado:
+                    raise OperacaoRecusada("Nada foi gravado. Para mudar o segredo de justiça, "
+                                           "marque a confirmação do segredo, conferida no processo.")
                 novo["segredo_justica"] = segredo == "sim"
             campos = ("sistema", "sistema_fonte", "grau", "comarca", "polo", "drive_pasta_id", "segredo_justica")
             _alterar(cursor, usuario_id, "processos", atual["processo_id"], {c: atual[c] for c in campos}, novo)
 
             # Itens
             depois = obter_conferencia(conexao, tarefa_id)
-            confirmado = bool(formulario.get("segredo_confirmado")) and segredo in ("sim", "nao")
             checklist = [dict(item) for item in depois["checklist"]]
             recusas, concluidos = [], []
             for indice in sorted(set(concluir)):
